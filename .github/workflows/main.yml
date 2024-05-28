@@ -33,6 +33,8 @@ jobs:
         git config --local user.name "Soumendraprasad"
         git checkout feature/demo
         git pull origin feature/demo
+        git status
         git add -A ${{ steps.set-path.outputs.path }}
+        git status
         git commit -m "Add generated test cases" --allow-empty
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
