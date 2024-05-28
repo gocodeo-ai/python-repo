@@ -39,6 +39,7 @@ jobs:
     - name: Executing the generated test cases
        run:cd shopping_cart
        run:python table.py
+       run:pip install coverage
        run:coverage run -m unittest discover -s gocodeo_tests
        run:coverage report
        
