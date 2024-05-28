@@ -16,7 +16,7 @@ jobs:
       id: set-path
       run: echo "::set-output name=path::shopping_cart"
 
-    - name: Install gocodeo
+    - name: Installing gocodeo
       run: pip install gocodeo==0.0.0.1
       
     - name: Generating test cases
