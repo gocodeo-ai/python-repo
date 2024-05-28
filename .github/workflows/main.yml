@@ -22,6 +22,7 @@ jobs:
     - name: Generating test cases
       run: |
         echo "${{ secrets.secret }}" | gocodeo-advanced generate ${{ steps.set-path.outputs.path }}
+
     - name: Check if branch exists
       run: git fetch origin feature/demo:feature/demo && git checkout feature/demo
 
@@ -36,9 +37,10 @@ jobs:
         git add ${{ steps.set-path.outputs.path }}
         git commit -m "Add generated test cases"
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
-    - name: Executing the generated test cases
-       run:cd shopping_cart
-       run:python table.py
-       run:coverage run -m unittest discover -s gocodeo_tests
-       run:coverage report
-       
+
+    - name: Execute the generated test cases
+      run: |
+        cd shopping_cart
+        python table.py
+        coverage run -m unittest discover -s gocodeo_tests
+        coverage report
