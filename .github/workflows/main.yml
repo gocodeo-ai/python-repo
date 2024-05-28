@@ -23,7 +23,7 @@ jobs:
       run: |
         echo "${{ secrets.secret }}" | gocodeo-advanced generate ${{ steps.set-path.outputs.path }}
         
-    - name: Check if branch exists
+    - name: Checking if branch exists
       run: git fetch origin feature/demo:feature/demo && git checkout feature/demo
 
     - name: Commit and push changes
