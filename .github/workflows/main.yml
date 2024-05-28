@@ -36,6 +36,9 @@ jobs:
         git add ${{ steps.set-path.outputs.path }}
         git commit -m "Add generated test cases"
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
+    - name: Install coverage
+      run: pip install coverage
+
     - name: Executing the generated test cases
        run:cd shopping_cart
        run:python table.py
