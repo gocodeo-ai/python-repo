@@ -1,7 +1,7 @@
 name: generate tests demo
 
 on:
-  push:
+  pull_request:
     branches: [main]
 
 jobs:
@@ -12,10 +12,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Set path variable
+      id: set-path
+      run: echo "::set-output name=path::shopping_cart"
 
-    - name: Install dependencies
+    - name: Install gocodeo
+      run: pip install gocodeo==0.0.0.1
+      
+    - name: Generating test cases
       run: |
-        pip install pymongo
-        pip install -i https://test.pypi.org/simple/ gocodeo==0.0.13.7
+        echo "${{ secrets.secret }}" | gocodeo-advanced generate ${{ steps.set-path.outputs.path }}
+    - name: Check if branch exists
+      run: git fetch origin feature/demo:feature/demo && git checkout feature/demo
 
-    
+    - name: Commit and push changes
+      env:
+        PAT: ${{ secrets.PAT }}
+      run: |
+        git config --local user.email "soumendraroman@gmail.com"
+        git config --local user.name "Soumendraprasad"
+        git checkout feature/demo
+        git pull origin feature/demo
+        git add ${{ steps.set-path.outputs.path }}
+        git commit -m "Add generated test cases"
+        git push origin HEAD:${{ github.event.pull_request.head.ref }}
+  
