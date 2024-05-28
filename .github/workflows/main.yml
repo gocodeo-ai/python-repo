@@ -37,8 +37,9 @@ jobs:
         git commit -m "Add generated test cases"
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
     - name: Executing the generated test cases
-       run:cd shopping_cart
-       run:python table.py
-       run:coverage run -m unittest discover -s gocodeo_tests
-       run:coverage report
+       run:|
+        cd shopping_cart
+        python table.py
+        coverage run -m unittest discover -s gocodeo_tests
+        coverage report
        
