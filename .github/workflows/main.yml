@@ -37,7 +37,7 @@ jobs:
         git add ${{ steps.set-path.outputs.path }}
         git commit -m "Add generated test cases"
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
-    - name: Installing Packages
+    - name: Install Packages
       run: pip install coverage  psutil memory_profiler
 
     - name: Executing the generated test cases
