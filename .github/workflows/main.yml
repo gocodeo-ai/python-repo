@@ -47,7 +47,7 @@ jobs:
         python table.py
     - name: Execute the generated test cases
       run: coverage run -m unittest discover -s gocodeo_tests
-    - name: Commit and push generated files
+    - name: Commiting and push generated files
       env:
         PAT: ${{ secrets.PAT }}
       run: |
