@@ -60,5 +60,5 @@ jobs:
         git commit -m "Add newly generated files"
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
 
-    - name: Coverage Report
+    - name: Generate Coverage Report
         coverage report
