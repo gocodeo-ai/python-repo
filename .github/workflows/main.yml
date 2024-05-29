@@ -56,7 +56,7 @@ jobs:
         git config --local user.name "Soumendraprasad"
         git checkout feature/demo
         git pull origin feature/demo
-        git add gocodeo_tests/ shopping_cart/
+        git add ../gocodeo_tests/ .
         git commit -m "Add newly generated files"
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
 
