@@ -45,6 +45,9 @@ jobs:
         export PYTHONPATH="$PWD"
         cd shopping_cart
         python table.py
+        pwd
         coverage run -m unittest discover -s gocodeo_tests|| true
     - name: Coverage Report
-      run: coverage report
+      run: |
+         pwd
+         coverage report
