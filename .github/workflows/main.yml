@@ -41,7 +41,7 @@ jobs:
     - name: Installing Packages
       run: pip install coverage  psutil memory_profiler
 
-    - name: Execute the generated test cases
+    - name: Executing the generated test cases
       run: |
         export PYTHONPATH="$PWD"
         cd shopping_cart
