@@ -47,7 +47,7 @@ jobs:
         python table.py
         pwd
         coverage run -m unittest discover -s gocodeo_tests|| true
-    - name: Coverage Report
+    - name: Coverage report
       run: |
        pwd
        coverage report
