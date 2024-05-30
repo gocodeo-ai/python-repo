@@ -1,4 +1,4 @@
-name:  generate tests 
+name:  gocodeo generate tests 
 
 on:
   pull_request:
