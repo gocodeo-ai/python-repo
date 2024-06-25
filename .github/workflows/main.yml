@@ -1,4 +1,4 @@
-name:  generate tests 
+name:  generate tests twst
 
 on:
   pull_request:
