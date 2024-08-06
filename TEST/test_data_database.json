@@ -1,0 +1,12 @@
+{
+  "test_data_add_item": [
+    {
+      "query": "INSERT INTO cart (item) VALUES (?)",
+      "params": "('Apple',)"
+    },
+    {
+      "query": "INSERT INTO cart (item, quantity) VALUES (?, ?)",
+      "params": "('Banana', 2)"
+    }
+  ]
+}

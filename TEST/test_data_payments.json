@@ -1,0 +1,71 @@
+{
+    "test_data_process_payments": [
+      {
+        "description": "Process payments with multiple methods",
+        "method_name": "test_process_payments_multiple_methods",
+        "payment_methods": [
+          {
+            "name": "Method 1",
+            "processing_time": 0.1
+          },
+          {
+            "name": "Method 2",
+            "processing_time": 0.2
+          }
+        ]
+      },
+      {
+        "description": "Process payments with one method",
+        "method_name": "test_process_payments_one_method",
+        "payment_methods": [
+          {
+            "name": "Method 1",
+            "processing_time": 0.1
+          }
+        ]
+      }
+    ],
+    "test_data_make_payments": [
+      {
+        "description": "Make payments with multiple methods",
+        "method_name": "test_make_payments_multiple_methods",
+        "payment_methods": [
+          {
+            "name": "Method 1",
+            "processing_time": 0.1
+          },
+          {
+            "name": "Method 2",
+            "processing_time": 0.2
+          }
+        ]
+      },
+      {
+        "description": "Make payments with one method",
+        "method_name": "test_make_payments_one_method",
+        "payment_methods": [
+          {
+            "name": "Method 1",
+            "processing_time": 0.1
+          }
+        ]
+      }
+    ],
+    "test_data_add_payment_to_cart": [
+      {
+        "description": "Add a payment method to the cart",
+        "method_name": "test_add_payment_to_cart_one_method",
+        "payment_method": {
+          "name": "Method 1",
+          "processing_time": 0.1
+        }
+      }
+    ],
+    "test_data_run_multiple_payments": [
+      {
+        "description": "Run multiple payments with different processing times",
+        "method_name": "test_run_multiple_payments_different_times",
+        "expected_result": "Method 4 Payment Processed"
+      }
+    ]
+  }

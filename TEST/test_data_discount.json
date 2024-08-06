@@ -1,0 +1,94 @@
+{
+  "test_apply_discount": [
+    {
+      "discount_rate": 0.1,
+      "min_purchase_amount": 100,
+      "expected_price": 230
+    },
+    {
+      "discount_rate": 0.15,
+      "min_purchase_amount": 100,
+      "expected_price": 255
+    },
+    {
+      "discount_rate": 0.1,
+      "min_purchase_amount": 50,
+      "expected_price": 230
+    },
+    {
+      "discount_rate": 0.15,
+      "min_purchase_amount": 150,
+      "expected_price": 230
+    }
+  ],
+  "test_apply_bulk_discount": [
+    {
+      "bulk_quantity": 2,
+      "bulk_discount_rate": 0.1,
+      "expected_prices": [80, 50]
+    },
+    {
+      "bulk_quantity": 3,
+      "bulk_discount_rate": 0.2,
+      "expected_prices": [80, 50]
+    }
+  ],
+  "test_apply_seasonal_discount": [
+    {
+      "season": "holiday",
+      "seasonal_discount_rate": 0.2,
+      "expected_price": 184
+    },
+    {
+      "season": "summer",
+      "seasonal_discount_rate": 0.2,
+      "expected_price": 190
+    },
+    {
+      "season": "winter",
+      "seasonal_discount_rate": 0.2,
+      "expected_price": 230
+    }
+  ],
+  "test_apply_category_discount": [
+    {
+      "category": "electronics",
+      "category_discount_rate": 0.1,
+      "expected_prices": [90, 50]
+    },
+    {
+      "category": "clothes",
+      "category_discount_rate": 0.2,
+      "expected_prices": [100, 40]
+    }
+  ],
+  "test_apply_loyalty_discount": [
+    {
+      "loyalty_years": 3,
+      "loyalty_discount_rate": 0.1,
+      "expected_price": 184
+    },
+    {
+      "loyalty_years": 1,
+      "loyalty_discount_rate": 0.1,
+      "expected_price": 230
+    }
+  ],
+  "test_apply_flash_sale_discount": [
+    {
+      "flash_sale_rate": 0.1,
+      "items_on_sale": [1],
+      "expected_prices": [90, 50]
+    },
+    {
+      "flash_sale_rate": 0.2,
+      "items_on_sale": [1, 2],
+      "expected_prices": [80, 40]
+    },
+    {
+      "flash_sale_rate": 0.2,
+      "items_on_sale": [3],
+      "expected_prices": [100, 50]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "test_calculate_discounted_price": [
+    {
+      "discount_rate": 0.1,
+      "expected_price": 180.0
+    },
+    {
+      "discount_rate": 0.2,
+      "expected_price": 160.0
+    },
+    {
+      "discount_rate": 0.0,
+      "expected_price": 200.0
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "test_data_add_item": [
+    {
+      "description": "Add item with valid data",
+      "method_name": "test_add_item_valid_data",
+      "item_id": 1,
+      "quantity": 2,
+      "price": 10.0,
+      "name": "Test Item 1",
+      "category": "Category A",
+      "user_type": "regular"
+    },
+    {
+      "description": "Add item with premium user",
+      "method_name": "test_add_item_premium_user",
+      "item_id": 2,
+      "quantity": 1,
+      "price": 15.0,
+      "name": "Test Item 2",
+      "category": "Category B",
+      "user_type": "premium"
+    },
+    {
+      "description": "Add item with negative price",
+      "method_name": "test_add_item_negative_price",
+      "item_id": 3,
+      "quantity": 1,
+      "price": -5.0,
+      "name": "Test Item 3",
+      "category": "Category C",
+      "user_type": "regular"
+    }
+  ],
+  "test_data_remove_item": [
+    {
+      "description": "Remove item from non-empty cart",
+      "method_name": "test_remove_item_non_empty_cart",
+      "item_id": 1
+    },
+    {
+      "description": "Remove non-existent item",
+      "method_name": "test_remove_item_non_existent",
+      "item_id": 10
+    }
+  ],
+  "test_data_update_item_quantity": [
+    {
+      "description": "Update quantity of existing item",
+      "method_name": "test_update_item_quantity_existing_item",
+      "item_id": 1,
+      "new_quantity": 3
+    },
+    {
+      "description": "Update quantity of non-existent item",
+      "method_name": "test_update_item_quantity_non_existent_item",
+      "item_id": 10,
+      "new_quantity": 2
+    }
+  ],
+  "test_data_calculate_total_price": [
+    {
+      "description": "Calculate total price with valid items",
+      "method_name": "test_calculate_total_price_valid_items",
+      "items": [
+        {
+          "item_id": 1,
+          "quantity": 2,
+          "price": 10.0
+        },
+        {
+          "item_id": 2,
+          "quantity": 1,
+          "price": 15.0
+        }
+      ],
+      "expected_total_price": 35.0
+    },
+    {
+      "description": "Calculate total price with empty cart",
+      "method_name": "test_calculate_total_price_empty_cart",
+      "items": [],
+      "expected_total_price": 0.0
+    }
+  ]
+}

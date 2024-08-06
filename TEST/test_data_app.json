@@ -1,0 +1,101 @@
+{
+    "test_add_item": [
+      {
+        "item_id": 1,
+        "quantity": 2,
+        "price": 10.0,
+        "name": "Test Item 1",
+        "category": "Electronics"
+      },
+      {
+        "item_id": 2,
+        "quantity": 1,
+        "price": 5.0,
+        "name": "Test Item 2",
+        "category": "Books"
+      }
+    ],
+    "test_remove_item": [
+      {
+        "item_id": 1,
+        "quantity": 2,
+        "price": 10.0,
+        "name": "Test Item 1",
+        "category": "Electronics"
+      },
+      {
+        "item_id": 2,
+        "quantity": 1,
+        "price": 5.0,
+        "name": "Test Item 2",
+        "category": "Books"
+      }
+    ],
+    "test_update_item_quantity": [
+      {
+        "item_id": 1,
+        "quantity": 2,
+        "price": 10.0,
+        "name": "Test Item 1",
+        "category": "Electronics",
+        "new_quantity": 5
+      },
+      {
+        "item_id": 2,
+        "quantity": 1,
+        "price": 5.0,
+        "name": "Test Item 2",
+        "category": "Books",
+        "new_quantity": 3
+      }
+    ],
+    "test_calculate_total_price": [
+      {
+        "cart_items": [
+          {"item_id": 1, "quantity": 2, "price": 10.0, "name": "Item 1", "category": "Category 1", "user_type": "regular"},
+          {"item_id": 2, "quantity": 1, "price": 5.0, "name": "Item 2", "category": "Category 2", "user_type": "regular"}
+        ],
+        "expected_total_price": 25.0
+      },
+      {
+        "cart_items": [
+          {"item_id": 1, "quantity": 1, "price": 20.0, "name": "Item 1", "category": "Category 1", "user_type": "regular"},
+          {"item_id": 2, "quantity": 3, "price": 10.0, "name": "Item 2", "category": "Category 2", "user_type": "regular"}
+        ],
+        "expected_total_price": 50.0
+      }
+    ],
+    "test_get_cart_items": [
+      {
+        "expected_items": [
+          {"item_id": 1, "quantity": 2, "price": 10.0, "name": "Item 1", "category": "Category 1", "user_type": "regular"},
+          {"item_id": 2, "quantity": 1, "price": 5.0, "name": "Item 2", "category": "Category 2", "user_type": "regular"}
+        ]
+      }
+    ],
+    "test_apply_discount_to_cart": [
+      {
+        "discount_rate": 0.1,
+        "min_purchase_amount": 10.0,
+        "expected_total_price": 22.5
+      },
+      {
+        "discount_rate": 0.2,
+        "min_purchase_amount": 0.0,
+        "expected_total_price": 20.0
+      },
+      {
+        "discount_rate": 0.5,
+        "min_purchase_amount": 30.0,
+        "expected_total_price": 25.0
+      }
+    ],
+    "test_empty_cart": [
+      {
+        "cart_items": [
+          {"item_id": 1, "quantity": 2, "price": 10.0, "name": "Item 1", "category": "Category 1", "user_type": "regular"},
+          {"item_id": 2, "quantity": 1, "price": 5.0, "name": "Item 2", "category": "Category 2", "user_type": "regular"}
+        ]
+      }
+    ]
+  }

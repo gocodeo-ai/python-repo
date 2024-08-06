@@ -1,0 +1,12 @@
+{
+  "test_list_items": [
+    {
+      "test_items": [{"name": "Apple", "quantity": 2, "price": 1.0}],
+      "expected_output": "Item: Apple, Quantity: 2, Price per unit: 1.0\n"
+    },
+    {
+      "test_items": [{"name": "Banana", "quantity": 1, "price": 0.5}, {"name": "Orange", "quantity": 3, "price": 0.75}],
+      "expected_output": "Item: Banana, Quantity: 1, Price per unit: 0.5\nItem: Orange, Quantity: 3, Price per unit: 0.75\n"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from shopping_cart.cart import Cart
 from shopping_cart.discounts import Discount
-from demo.shopping_cart.payments import apply_promotions, Promotion  # Fixed import and added Promotion class
+from shopping_cart.payments import apply_promotions, Promotion  # Fixed import and added Promotion class
 from shopping_cart.utils import get_all_items_from_cart
 
 app = Flask(__name__)
