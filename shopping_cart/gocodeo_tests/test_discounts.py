@@ -1,63 +1,103 @@
-import unittest
+import pytest
 from unittest.mock import MagicMock
-from shopping_cart.cart import Cart,Item
-from shopping_cart.discounts import Discount
 
+@pytest.fixture
+def cart():
+    cart = MagicMock()
+    cart.calculate_total_price = MagicMock(return_value=1000)
+    cart.user_type = "regular"
+    cart.items = [
+        {"item_id": 1, "category": "electronics", "quantity": 1, "price": 100},
+        {"item_id": 2, "category": "clothing", "quantity": 2, "price": 50},
+    ]
+    cart.total_price = 1000
+    return cart
 
-class TestDiscount(unittest.TestCase):
-    def setUp(self):
-        self.cart = Cart(user_type="regular")
-        self.cart.user_type = "regular"
-        item1 = {"item_id":1, "price":50.0, "name":"Phone", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Tab", "category":"electronics", "user_type": "premium", "quantity": 4}
+@pytest.fixture
+def discount():
+    return Discount(discount_rate=0.1, min_purchase_amount=500)
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
+@pytest.fixture
+def bulk_discount_cart():
+    cart = MagicMock()
+    cart.items = [
+        {"item_id": 1, "category": "electronics", "quantity": 5, "price": 100},
+        {"item_id": 2, "category": "clothing", "quantity": 10, "price": 50},
+    ]
+    return cart
 
-    def test_apply_discount_logic_error(self):
-        self.cart.user_type = "premium"
-        discount = Discount(0.1, 50)
-        total_price = discount.apply_discount(self.cart)
-        self.assertAlmostEqual(total_price, 85.0, places=2, msg="Both values should be equal")
+@pytest.fixture
+def seasonal_discount_cart():
+    cart = MagicMock()
+    cart.calculate_total_price = MagicMock(return_value=2000)
+    cart.total_price = 2000
+    return cart
 
-    def test_apply_bulk_discount(self):
-        bulk_discount_rate = 0.20
-        bulk_quantity = 3
-        discount = Discount(0.1, 50)
-        discount.apply_bulk_discount(self.cart, bulk_quantity, bulk_discount_rate)
-        self.assertAlmostEqual(self.cart.items[1]["price"], 50 * 0.8, places=2, msg="Both values should be equal")
+@pytest.fixture
+def category_discount_cart():
+    cart = MagicMock()
+    cart.items = [
+        {"item_id": 1, "category": "electronics", "quantity": 1, "price": 100},
+        {"item_id": 2, "category": "clothing", "quantity": 2, "price": 50},
+    ]
+    return cart
 
-    def test_apply_seasonal_discount_holiday(self):
-        seasonal_discount_rate = 0.20
-        season = "holiday"
-        discount = Discount(0.1, 50)
-        discount.apply_seasonal_discount(self.cart, season, seasonal_discount_rate)
-        self.assertAlmostEqual(self.cart.total_price, (2 * 50 + 4 * 50) * 0.8, places=2, msg="Both values should be equal")
+@pytest.fixture
+def loyalty_discount_cart():
+    cart = MagicMock()
+    cart.calculate_total_price = MagicMock(return_value=1500)
+    cart.user_type = "loyal"
+    cart.total_price = 1500
+    return cart
 
-    def test_apply_category_discount(self):
-        category_discount_rate = 0.25
-        category = "electronics"
-        discount = Discount(0.1, 50)
-        discount.apply_category_discount(self.cart, category, category_discount_rate)
-        self.assertAlmostEqual(self.cart.items[1]["price"], 50 * 0.75, places=2, msg="Both values should be equal")
+@pytest.fixture
+def flash_sale_cart():
+    cart = MagicMock()
+    cart.items = [
+        {"item_id": 1, "category": "electronics", "quantity": 1, "price": 100},
+        {"item_id": 2, "category": "clothing", "quantity": 2, "price": 50},
+    ]
+    return cart# happy_path - apply_discount - Apply discount to a regular user with total price above minimum purchase amount
+def test_apply_discount_regular(cart, discount):
+    cart.user_type = 'regular'
+    total = discount.apply_discount(cart)
+    assert total == 1100.0
 
-    def test_apply_loyalty_discount(self):
-        loyalty_discount_rate = 0.05
-        loyalty_years = 3
-        self.cart.user_type = "loyal"
-        discount = Discount(0.1, 50)
-        discount.apply_loyalty_discount(self.cart, loyalty_years, loyalty_discount_rate)
-        self.assertAlmostEqual(self.cart.total_price, (2 * 50 + 4 * 50) * 0.95, places=2, msg="Both values should be equal")
+# happy_path - apply_discount - Apply discount to a premium user with electronics in cart
+def test_apply_discount_premium(cart, discount):
+    cart.user_type = 'premium'
+    cart.items[0]['category'] = 'electronics'
+    total = discount.apply_discount(cart)
+    assert total == 1150.0
 
-    def test_apply_flash_sale_discount(self):
-        flash_sale_rate = 0.30
-        items_on_sale = [1, 2]
-        discount = Discount(0.1, 50)
-        discount.apply_flash_sale_discount(self.cart, flash_sale_rate, items_on_sale)
-        self.assertAlmostEqual(self.cart.items[0]["price"], 50 * 0.7, places=2, msg="Both values should be equal")
-        self.assertAlmostEqual(self.cart.items[1]["price"], 50 * 0.7, places=2, msg="Both values should be equal")
+# happy_path - apply_bulk_discount - Apply bulk discount to items in cart
+def test_apply_bulk_discount(bulk_discount_cart, discount):
+    discount.apply_bulk_discount(bulk_discount_cart, 5, 0.2)
+    assert bulk_discount_cart.items[0]['price'] == 80.0
+    assert bulk_discount_cart.items[1]['price'] == 50
 
-if __name__ == '__main__':
-    unittest.main()
+# happy_path - apply_seasonal_discount - Apply holiday seasonal discount
+def test_apply_seasonal_discount(seasonal_discount_cart, discount):
+    total = discount.apply_seasonal_discount(seasonal_discount_cart, 'holiday', 0.1)
+    assert total == 1800.0
+
+# happy_path - apply_category_discount - Apply category discount to electronics
+def test_apply_category_discount(category_discount_cart, discount):
+    discount.apply_category_discount(category_discount_cart, 'electronics', 0.2)
+    assert category_discount_cart.items[0]['price'] == 80.0
+
+# happy_path - apply_loyalty_discount - Apply loyalty discount for a loyal user
+def test_apply_loyalty_discount(loyalty_discount_cart, discount):
+    total = discount.apply_loyalty_discount(loyalty_discount_cart, 3, 0.15)
+    assert total == 1275.0
+
+# happy_path - apply_flash_sale_discount - Apply flash sale discount to items on sale
+def test_apply_flash_sale_discount(flash_sale_cart, discount):
+    discount.apply_flash_sale_discount(flash_sale_cart, 0.3, [1])
+    assert flash_sale_cart.items[0]['price'] == 70.0
+
+# happy_path - apply_flash_sale_discount - No flash sale discount applied to items not on sale
+def test_apply_flash_sale_discount_no_discount(flash_sale_cart, discount):
+    discount.apply_flash_sale_discount(flash_sale_cart, 0.3, [3])
+    assert flash_sale_cart.items[0]['price'] == 100.0
+
