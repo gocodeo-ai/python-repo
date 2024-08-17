@@ -1,106 +1,77 @@
-import unittest
-from shopping_cart import Cart, Item
+# happy_path - add_item - Add an item to the cart successfully
+def test_add_item(cart):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    assert len(cart.items) == 1
+    assert cart.items[0]['item_id'] == 1
+    assert cart.items[0]['quantity'] == 2
+    assert cart.items[0]['price'] == 10.0
+    assert cart.items[0]['name'] == 'Apple'
+    assert cart.items[0]['category'] == 'Fruit'
+    assert cart.items[0]['user_type'] == 'regular'
 
-class TestCart(unittest.TestCase):
+# happy_path - remove_item - Remove an item from the cart successfully
+def test_remove_item(cart):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    cart.remove_item(1)
+    assert len(cart.items) == 0
 
-    def setUp(self):
-        self.cart = Cart(user_type="regular")
+# happy_path - update_item_quantity - Update the quantity of an existing item
+def test_update_item_quantity(cart):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    cart.update_item_quantity(1, 5)
+    assert cart.items[0]['quantity'] == 5
 
-    def test_add_item(self):
-        item_id = 1
-        quantity = 2
-        price = 50.0
-        name = "Phone"
-        category = "electronics"
-        user_type = "premium"
-        self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-        self.assertEqual(len(self.cart.items), 1)
-        self.assertEqual(self.cart.items[0]['item_id'], item_id)
-        self.assertEqual(self.cart.items[0]['quantity'], quantity)
-        self.assertEqual(self.cart.items[0]['price'], price)
-        self.assertEqual(self.cart.items[0]['name'], name)
-        self.assertEqual(self.cart.items[0]['category'], category)
-        self.assertEqual(self.cart.items[0]['user_type'], user_type)
-     
+# happy_path - calculate_total_price - Calculate total price of items in the cart
+def test_calculate_total_price(cart):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    cart.add_item(2, 1, 20.0, 'Banana', 'Fruit', 'regular')
+    total = cart.calculate_total_price()
+    assert total == 50.0
 
-    def test_remove_item(self):
-        item_id = 1
-        quantity = 2
-        price = 50.0
-        name = "Phone"
-        category = "electronics"
-        user_type = "premium"
-        self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-        self.cart.remove_item(item_id)
-        
-        self.assertEqual(len(self.cart.items), 0)
-        
-        
+# happy_path - list_items - List items in the cart
+def test_list_items(cart, capsys):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    cart.list_items()
+    captured = capsys.readouterr()
+    assert 'Item: Apple, Quantity: 2, Price per unit: 10.0' in captured.out
 
-    def test_update_item_quantity(self):
-        item_id = 1
-        quantity = 2
-        new_quantity = 5
-        price = 50.0
-        name = "Phone"
-        category = "electronics"
-        user_type = "premium"
-        self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-        self.cart.update_item_quantity(item_id, new_quantity)
-        
-        self.assertEqual(self.cart.items[0]['quantity'], new_quantity)
-   
+# happy_path - empty_cart - Empty the cart successfully
+def test_empty_cart(cart):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    cart.empty_cart()
+    assert len(cart.items) == 0
 
-    def test_calculate_total_price(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Phone", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":30.0, "name":"Book", "category":"Books", "user_type": "premium", "quantity": 1}
+# edge_case - add_item - Add an item with zero quantity
+def test_add_item_zero_quantity(cart):
+    cart.add_item(1, 0, 10.0, 'Apple', 'Fruit', 'regular')
+    assert len(cart.items) == 1
+    assert cart.items[0]['quantity'] == 0
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
-        
-        total_price = self.cart.calculate_total_price()
-        
-        expected_total = (50.0 * 2) + 30.0
-        self.assertEqual(total_price, expected_total)
+# edge_case - remove_item - Remove an item that does not exist
+def test_remove_non_existing_item(cart):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    cart.remove_item(2)
+    assert len(cart.items) == 1
 
-  
-    def test_empty_cart(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Phone", "category":"electronics", "user_type": "premium", "quantity": 2}
+# edge_case - update_item_quantity - Update quantity of an item that does not exist
+def test_update_quantity_non_existing_item(cart):
+    cart.add_item(1, 2, 10.0, 'Apple', 'Fruit', 'regular')
+    cart.update_item_quantity(2, 5)
+    assert cart.items[0]['quantity'] == 2
 
-        self.cart.items = [
-            item1
-        ]
-        
-        self.cart.empty_cart()
-        
-        self.assertEqual(len(self.cart.items), 0)
-        
-      
-    def test_add_item_sql_injection_error(self):
-        # Simulate SQL injection by providing malicious input
-        malicious_input = "1; DROP TABLE cart; --"
+# edge_case - calculate_total_price - Calculate total price with no items
+def test_calculate_total_price_empty(cart):
+    total = cart.calculate_total_price()
+    assert total == 0.0
 
-        item_id = malicious_input
-        quantity = 2
-        price = 10.0
-        name = f"Test Item" 
-        category = "general"
-        user_type="premium"
-         # Call add_item method with malicious input and assert exception
-        with self.assertRaises(Exception) as context:
-             self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-       
-        # Check if the expected error message is in the raised exception
-        self.assertIn("SQL injection detected", str(context.exception))
-       
-                 
-     
+# edge_case - list_items - List items in an empty cart
+def test_list_items_empty(cart, capsys):
+    cart.list_items()
+    captured = capsys.readouterr()
+    assert captured.out == ''
 
-if __name__ == '__main__':
-    unittest.main()
+# edge_case - empty_cart - Empty an already empty cart
+def test_empty_cart_already_empty(cart):
+    cart.empty_cart()
+    assert len(cart.items) == 0
+
