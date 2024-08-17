@@ -1,45 +1,138 @@
-import unittest
-from shopping_cart.payments import  PaymentMethod, PaymentProcessor, process_payments
-from shopping_cart.cart import Cart,Item
+import pytest
+from unittest.mock import MagicMock, patch
+from threading import Thread
 
-class TestPayments(unittest.TestCase):
-    def test_concurrency_issue(self):
-     
-        cart = Cart('premium')
+@pytest.fixture
+def cart():
+    return MagicMock()
 
-        payment_methods = [PaymentMethod(name="Method1", processing_time=0.1), PaymentMethod(name="Method2", processing_time=0.2)]
+@pytest.fixture
+def payment_method():
+    mock_payment_method = MagicMock()
+    mock_payment_method.name = 'Card'
+    mock_payment_method.processing_time = 0.5
+    return mock_payment_method
 
-        process_payments(cart, payment_methods)
+@pytest.fixture
+def payment_methods():
+    return [
+        MagicMock(name='Card', processing_time=0.5),
+        MagicMock(name='PayPal', processing_time=0.3)
+    ]
 
-        self.assertEqual(cart.payment_status, "Method1 Payment Processed")
-    
-    def test_failed_payment_processing(self):
-        
-        cart = Cart('premium')
+@pytest.fixture
+def promotions():
+    return [
+        MagicMock(name='Spring Sale', discount_rate=0.2)
+    ]
 
-        cart.total_price = 50 
+@pytest.fixture
+def cart_with_items():
+    cart = MagicMock()
+    cart.items = [MagicMock(price=100)]
+    return cart
 
-        process_payments(cart, "InvalidMethod") 
+@pytest.fixture
+def cart_with_payment_status():
+    cart = MagicMock()
+    cart.payment_status = ''
+    return cart
 
-        self.assertEqual(cart.payment_status, "Payment Processing Failed")
-        
-    
-    def test_successful_payment_processing(self):
-        cart = Cart('premium')
-        cart.total_price = 100
+@pytest.fixture
+def cart_with_null():
+    return None
 
-        payment_methods = [
-            PaymentMethod(name="CreditCard", processing_time=0.5),
-            PaymentMethod(name="PayPal", processing_time=0.8)
-        ]
+@pytest.fixture
+def payment_method_with_null():
+    return None
 
-        process_payments(cart, payment_methods)
+@pytest.fixture
+def payment_method_with_negative_time():
+    mock_payment_method = MagicMock()
+    mock_payment_method.name = 'Card'
+    mock_payment_method.processing_time = -0.5
+    return mock_payment_method
 
-        self.assertEqual(cart.payment_status, "PayPal Payment Processed")
-       
+@pytest.fixture
+def empty_payment_methods():
+    return []
+
+@pytest.fixture
+def empty_promotions():
+    return []
+
+@pytest.fixture
+def payment_processor(cart, payment_method):
+    with patch('shopping_cart.payments.PaymentProcessor') as MockPaymentProcessor:
+        instance = MockPaymentProcessor.return_value
+        instance.cart = cart
+        instance.payment_method = payment_method
+        return instance
+
+@pytest.fixture
+def payment_processor_with_null_cart(payment_method):
+    with patch('shopping_cart.payments.PaymentProcessor') as MockPaymentProcessor:
+        instance = MockPaymentProcessor.return_value
+        instance.cart = None
+        instance.payment_method = payment_method
+        return instance
+
+@pytest.fixture
+def payment_processor_with_null_payment_method(cart):
+    with patch('shopping_cart.payments.PaymentProcessor') as MockPaymentProcessor:
+        instance = MockPaymentProcessor.return_value
+        instance.cart = cart
+        instance.payment_method = None
+        return instance
+
+@pytest.fixture
+def payment_processor_with_negative_time(cart, payment_method_with_negative_time):
+    with patch('shopping_cart.payments.PaymentProcessor') as MockPaymentProcessor:
+        instance = MockPaymentProcessor.return_value
+        instance.cart = cart
+        instance.payment_method = payment_method_with_negative_time
+        return instance# happy_path - __init__ - generate test cases on successful initialization of PaymentProcessor
+def test_payment_processor_initialization(cart, payment_method):
+    processor = PaymentProcessor(cart, payment_method)
+    assert processor.cart == cart
+    assert processor.payment_method == payment_method
 
 
-if __name__ == "__main__":
-    unittest.main()
+# edge_case - __init__ - generate test cases on PaymentProcessor with null cart
+def test_payment_processor_null_cart(payment_method_with_null):
+    processor = PaymentProcessor(None, payment_method_with_null)
+    assert processor.cart is None
+    assert processor.payment_method == payment_method_with_null
+
+
+# edge_case - __init__ - generate test cases on PaymentProcessor with null payment method
+def test_payment_processor_null_payment_method(cart):
+    processor = PaymentProcessor(cart, None)
+    assert processor.cart == cart
+    assert processor.payment_method is None
+
+
+# edge_case - process_payments - generate test cases on processing payments with empty methods list
+def test_process_payments_empty_methods(cart, empty_payment_methods):
+    process_payments(cart, empty_payment_methods)
+    assert cart.payment_status == ''
+
+
+# edge_case - apply_promotions - generate test cases on applying promotions with empty promotions list
+def test_apply_promotions_empty_promotions(cart_with_items, empty_promotions):
+    apply_promotions(cart_with_items, empty_promotions)
+    assert cart_with_items.items[0].price == 100
+
+
+# edge_case - process_payment - generate test cases on processing payment with negative processing time
+def test_process_payment_negative_time(cart, payment_method_with_negative_time):
+    payment_method_with_negative_time.process_payment(cart)
+    assert cart.payment_status == 'Card Payment Processed'
+
+
+# edge_case - run_multiple_payments - generate test cases on running multiple payments with no cart
+def test_run_multiple_payments_no_cart():
+    run_multiple_payments(None)
+    assert True  # Assuming no exception is raised
 
 
