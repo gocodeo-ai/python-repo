@@ -1,96 +1,101 @@
-import unittest
-from unittest.mock import MagicMock, patch
-from shopping_cart.utils import get_all_items_from_cart, calculate_discounted_price, print_cart_summary, save_cart_to_db
-from shopping_cart.cart import Cart, Item
-import time
+import pytest
+from unittest.mock import patch, MagicMock
 
-class TestUtils(unittest.TestCase):
-    def setUp(self):
-        self.cart = Cart(user_type="regular")
-    def test_get_all_items_performance(self):
-        self.cart.items = [{"item_id": i , "quantity": 1} for i in range(10)]
+# Mocking dependencies
+@pytest.fixture
+def mock_add_item_to_cart_db():
+    with patch('shopping_cart.database.add_item_to_cart_db') as mock:
+        yield mock
 
-        start_time = time.time()
-        get_all_items_from_cart(self.cart)
-        end_time = time.time()
+@pytest.fixture
+def mock_time_sleep():
+    with patch('time.sleep') as mock:
+        yield mock
 
-        threshold_time = 0.5  # in seconds
+@pytest.fixture
+def cart_fixture():
+    class Cart:
+        def __init__(self, items):
+            self.items = items
 
-        execution_time = end_time - start_time
-       
-        self.assertLess(execution_time, threshold_time, f"Performance bottleneck: Execution time {execution_time} exceeds threshold {threshold_time} seconds")
+        def calculate_total_price(self):
+            return sum(item['price'] * item['quantity'] for item in self.items)
 
+    return Cart
 
-   
-    def test_get_all_items_from_cart(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
+@pytest.fixture
+def setup_mocks(mock_add_item_to_cart_db, mock_time_sleep, cart_fixture):
+    return {
+        'mock_add_item_to_cart_db': mock_add_item_to_cart_db,
+        'mock_time_sleep': mock_time_sleep,
+        'cart_fixture': cart_fixture
+    }# happy_path - get_all_items_from_cart - Test retrieving all items from a cart with multiple items.
+def test_get_all_items_from_cart(cart_fixture):
+    cart = cart_fixture(items=[{'item_id': 1, 'quantity': 2}, {'item_id': 2, 'quantity': 1}])
+    result = get_all_items_from_cart(cart)
+    expected_result = [{'name': 'Item 1', 'price': 10.0, 'category': 'general'}, {'name': 'Item 2', 'price': 10.0, 'category': 'general'}]
+    assert result == expected_result
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
+# happy_path - get_item_details_from_db - Test retrieving item details from the database.
+def test_get_item_details_from_db():
+    result = get_item_details_from_db(3)
+    expected_result = {'name': 'Item 3', 'price': 10.0, 'category': 'general'}
+    assert result == expected_result
 
-        items = get_all_items_from_cart(self.cart)
-        
-        self.assertEqual(len(items), 2)
-        self.assertEqual(items[0]['name'], 'Item 1')
-        self.assertEqual(items[1]['name'], 'Item 2')
+# happy_path - calculate_discounted_price - Test calculating discounted price for a cart.
+def test_calculate_discounted_price(cart_fixture):
+    cart = cart_fixture(items=[{'price': 10.0, 'quantity': 2}, {'price': 20.0, 'quantity': 1}])
+    result = calculate_discounted_price(cart, 0.1)
+    expected_result = 27.0
+    assert result == expected_result
 
+# happy_path - print_cart_summary - Test printing cart summary with items.
+def test_print_cart_summary(cart_fixture, capsys):
+    cart = cart_fixture(items=[{'name': 'Item 1', 'category': 'general', 'quantity': 1, 'price': 10.0}])
+    cart.calculate_total_price = lambda: 10.0
+    print_cart_summary(cart)
+    captured = capsys.readouterr()
+    expected_output = 'Cart Summary:\nItem: Item 1, Category: general, Quantity: 1, Price: 10.0\nTotal Price: 10.0\n'
+    assert captured.out == expected_output
 
-    def test_calculate_discounted_price(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
+# happy_path - save_cart_to_db - Test saving cart to the database with valid items.
+def test_save_cart_to_db(cart_fixture, mock_add_item_to_cart_db):
+    cart = cart_fixture(items=[{'item_id': 1, 'quantity': 2, 'price': 10.0}, {'item_id': 2, 'quantity': 1, 'price': 20.0}])
+    save_cart_to_db(cart)
+    assert mock_add_item_to_cart_db.call_count == 2
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
+# edge_case - get_all_items_from_cart - Test retrieving items from an empty cart.
+def test_get_all_items_from_empty_cart(cart_fixture):
+    cart = cart_fixture(items=[])
+    result = get_all_items_from_cart(cart)
+    expected_result = []
+    assert result == expected_result
 
-        discount_rate = 0.1  # 10% discount
-        discounted_price = calculate_discounted_price(self.cart, discount_rate)
-        
-        expected_price = 50.0 * 2 + 50.0 * 4  # Total without discount
-        expected_discounted_price = expected_price * (1 - discount_rate)
-        
-        self.assertEqual(discounted_price, expected_discounted_price)
+# edge_case - get_item_details_from_db - Test retrieving item details with an invalid item ID.
+def test_get_item_details_from_invalid_id():
+    result = get_item_details_from_db(999)
+    expected_result = None
+    assert result == expected_result
 
-    @patch('builtins.print')
-    def test_print_cart_summary(self, mock_print):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
+# edge_case - calculate_discounted_price - Test calculating discounted price with zero items in cart.
+def test_calculate_discounted_price_with_empty_cart(cart_fixture):
+    cart = cart_fixture(items=[])
+    result = calculate_discounted_price(cart, 0.2)
+    expected_result = 0.0
+    assert result == expected_result
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
+# edge_case - print_cart_summary - Test printing cart summary with no items.
+def test_print_cart_summary_with_no_items(cart_fixture, capsys):
+    cart = cart_fixture(items=[])
+    cart.calculate_total_price = lambda: 0.0
+    print_cart_summary(cart)
+    captured = capsys.readouterr()
+    expected_output = 'Cart Summary:\nTotal Price: 0.0\n'
+    assert captured.out == expected_output
 
-        self.cart.calculate_total_price()
-        print_cart_summary(self.cart)
+# edge_case - save_cart_to_db - Test saving an empty cart to the database.
+def test_save_empty_cart_to_db(cart_fixture, mock_add_item_to_cart_db):
+    cart = cart_fixture(items=[])
+    save_cart_to_db(cart)
+    assert mock_add_item_to_cart_db.call_count == 0
 
-        print("Cart Summary:")
-        print("Item: Item 1, Category: general, Quantity: 2, Price: 50.0")
-        print("Item: Item 2, Category: general, Quantity: 4, Price: 50.0")
-        print("Total Price: 300.0")
-
-    @patch('database.add_item_to_cart_db')
-    def test_save_cart_to_db(self, mock_add_item_to_cart_db):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
-
-        self.cart.items = [
-           item1,
-           item2
-        ]
-
-        save_cart_to_db(self.cart)
-        items = get_all_items_from_cart(self.cart)
-         
-        self.assertEqual(len(items), 2)
-        self.assertEqual(items[0]['name'], 'Item 1')
-        self.assertEqual(items[1]['name'], 'Item 2')
-
-
-
-if __name__ == "__main__":
-    unittest.main()
