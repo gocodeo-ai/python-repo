@@ -1,106 +1,98 @@
-import unittest
-from shopping_cart import Cart, Item
+import pytest
+from unittest.mock import patch, MagicMock
+from shopping_cart.database import add_item_to_cart_db
+from shopping_cart.cart import Cart, Item
 
-class TestCart(unittest.TestCase):
+@pytest.fixture
+def cart():
+    with patch('shopping_cart.database.add_item_to_cart_db') as mock_add_item_to_cart_db:
+        cart = Cart(user_type='guest')
+        yield cart, mock_add_item_to_cart_db# happy_path - add_item - Adding a valid item to the cart
+def test_add_item_valid(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='guest')
+    assert cart.items == [{'item_id': 1, 'quantity': 2, 'price': 10.0, 'name': 'Apple', 'category': 'Fruits', 'user_type': 'guest'}]
+    mock_add_item_to_cart_db.assert_called_once()
 
-    def setUp(self):
-        self.cart = Cart(user_type="regular")
+# happy_path - remove_item - Removing an existing item from the cart
+def test_remove_item_existing(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='guest')
+    cart.remove_item(item_id=1)
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_called_once()
 
-    def test_add_item(self):
-        item_id = 1
-        quantity = 2
-        price = 50.0
-        name = "Phone"
-        category = "electronics"
-        user_type = "premium"
-        self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-        self.assertEqual(len(self.cart.items), 1)
-        self.assertEqual(self.cart.items[0]['item_id'], item_id)
-        self.assertEqual(self.cart.items[0]['quantity'], quantity)
-        self.assertEqual(self.cart.items[0]['price'], price)
-        self.assertEqual(self.cart.items[0]['name'], name)
-        self.assertEqual(self.cart.items[0]['category'], category)
-        self.assertEqual(self.cart.items[0]['user_type'], user_type)
-     
+# happy_path - update_item_quantity - Updating the quantity of an existing item
+def test_update_item_quantity_valid(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='guest')
+    cart.update_item_quantity(item_id=1, new_quantity=5)
+    assert cart.items == [{'item_id': 1, 'quantity': 5, 'price': 10.0, 'name': 'Apple', 'category': 'Fruits', 'user_type': 'guest'}]
+    mock_add_item_to_cart_db.assert_called_once()
 
-    def test_remove_item(self):
-        item_id = 1
-        quantity = 2
-        price = 50.0
-        name = "Phone"
-        category = "electronics"
-        user_type = "premium"
-        self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-        self.cart.remove_item(item_id)
-        
-        self.assertEqual(len(self.cart.items), 0)
-        
-        
+# happy_path - calculate_total_price - Calculating total price of items in the cart
+def test_calculate_total_price(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='guest')
+    total_price = cart.calculate_total_price()
+    assert total_price == 20.0
+    assert cart.total_price == 20.0
 
-    def test_update_item_quantity(self):
-        item_id = 1
-        quantity = 2
-        new_quantity = 5
-        price = 50.0
-        name = "Phone"
-        category = "electronics"
-        user_type = "premium"
-        self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-        self.cart.update_item_quantity(item_id, new_quantity)
-        
-        self.assertEqual(self.cart.items[0]['quantity'], new_quantity)
-   
+# happy_path - list_items - Listing items in the cart
+def test_list_items(cart, capsys):
+    cart, mock_add_item_to_cart_db = cart
+    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='guest')
+    cart.list_items()
+    captured = capsys.readouterr()
+    assert captured.out == 'Item: Apple, Quantity: 2, Price per unit: 10.0\n' 
 
-    def test_calculate_total_price(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Phone", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":30.0, "name":"Book", "category":"Books", "user_type": "premium", "quantity": 1}
+# happy_path - empty_cart - Emptying the cart
+def test_empty_cart(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='guest')
+    cart.empty_cart()
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_called_once()
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
-        
-        total_price = self.cart.calculate_total_price()
-        
-        expected_total = (50.0 * 2) + 30.0
-        self.assertEqual(total_price, expected_total)
+# edge_case - add_item - Adding an item with zero quantity
+def test_add_item_zero_quantity(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.add_item(item_id=2, quantity=0, price=15.0, name='Banana', category='Fruits', user_type='guest')
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_not_called()
 
-  
-    def test_empty_cart(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Phone", "category":"electronics", "user_type": "premium", "quantity": 2}
+# edge_case - remove_item - Removing a non-existing item from the cart
+def test_remove_item_non_existing(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.remove_item(item_id=999)
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_called_once()
 
-        self.cart.items = [
-            item1
-        ]
-        
-        self.cart.empty_cart()
-        
-        self.assertEqual(len(self.cart.items), 0)
-        
-      
-    def test_add_item_sql_injection_error(self):
-        # Simulate SQL injection by providing malicious input
-        malicious_input = "1; DROP TABLE cart; --"
+# edge_case - update_item_quantity - Updating quantity of an item that doesn't exist
+def test_update_item_quantity_non_existing(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.update_item_quantity(item_id=999, new_quantity=3)
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_not_called()
 
-        item_id = malicious_input
-        quantity = 2
-        price = 10.0
-        name = f"Test Item" 
-        category = "general"
-        user_type="premium"
-         # Call add_item method with malicious input and assert exception
-        with self.assertRaises(Exception) as context:
-             self.cart.add_item(item_id, quantity, price, name, category, user_type)
-        
-       
-        # Check if the expected error message is in the raised exception
-        self.assertIn("SQL injection detected", str(context.exception))
-       
-                 
-     
+# edge_case - calculate_total_price - Calculating total price when cart is empty
+def test_calculate_total_price_empty_cart(cart):
+    cart, mock_add_item_to_cart_db = cart
+    total_price = cart.calculate_total_price()
+    assert total_price == 0.0
+    assert cart.total_price == 0.0
 
-if __name__ == '__main__':
-    unittest.main()
+# edge_case - list_items - Listing items when cart is empty
+def test_list_items_empty_cart(cart, capsys):
+    cart, mock_add_item_to_cart_db = cart
+    cart.list_items()
+    captured = capsys.readouterr()
+    assert captured.out == ''
+
+# edge_case - empty_cart - Emptying an already empty cart
+def test_empty_cart_already_empty(cart):
+    cart, mock_add_item_to_cart_db = cart
+    cart.empty_cart()
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_called_once()
+

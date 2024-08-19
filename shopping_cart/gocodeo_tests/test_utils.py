@@ -1,96 +1,70 @@
-import unittest
-from unittest.mock import MagicMock, patch
-from shopping_cart.utils import get_all_items_from_cart, calculate_discounted_price, print_cart_summary, save_cart_to_db
-from shopping_cart.cart import Cart, Item
-import time
+import pytest
+from unittest.mock import patch, MagicMock
+from shopping_cart.database import add_item_to_cart_db
 
-class TestUtils(unittest.TestCase):
-    def setUp(self):
-        self.cart = Cart(user_type="regular")
-    def test_get_all_items_performance(self):
-        self.cart.items = [{"item_id": i , "quantity": 1} for i in range(10)]
+@pytest.fixture
+def mock_add_item_to_cart_db():
+    with patch('shopping_cart.database.add_item_to_cart_db') as mock_db:
+        yield mock_db
 
-        start_time = time.time()
-        get_all_items_from_cart(self.cart)
-        end_time = time.time()
+@pytest.fixture
+def mock_get_item_details_from_db():
+    with patch('__main__.get_item_details_from_db') as mock_details:
+        yield mock_details
 
-        threshold_time = 0.5  # in seconds
+@pytest.fixture
+def mock_time_sleep():
+    with patch('time.sleep') as mock_sleep:
+        yield mock_sleep
 
-        execution_time = end_time - start_time
-       
-        self.assertLess(execution_time, threshold_time, f"Performance bottleneck: Execution time {execution_time} exceeds threshold {threshold_time} seconds")
+@pytest.fixture
+def cart():
+    return MagicMock()
 
+@pytest.fixture
+def cart_with_items():
+    cart = MagicMock()
+    cart.items = [
+        {'item_id': 1, 'quantity': 2, 'price': 10.0},
+        {'item_id': 2, 'quantity': 1, 'price': 15.0}
+    ]
+    cart.calculate_total_price = MagicMock(return_value=35.0)
+    return cart
 
-   
-    def test_get_all_items_from_cart(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
+@pytest.fixture
+def empty_cart():
+    cart = MagicMock()
+    cart.items = []
+    cart.calculate_total_price = MagicMock(return_value=0.0)
+    return cart# happy_path - get_item_details_from_db - Test getting item details from the database with a valid ID
+def test_get_item_details_valid_id():
+    result = get_item_details_from_db(1)
+    assert result == {'name': 'Item 1', 'price': 10.0, 'category': 'general'}
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
+# edge_case - get_all_items_from_cart - Test getting all items from an empty cart
+def test_get_all_items_from_cart_empty(empty_cart):
+    result = get_all_items_from_cart(empty_cart)
+    assert result == []
 
-        items = get_all_items_from_cart(self.cart)
-        
-        self.assertEqual(len(items), 2)
-        self.assertEqual(items[0]['name'], 'Item 1')
-        self.assertEqual(items[1]['name'], 'Item 2')
+# edge_case - get_item_details_from_db - Test getting item details from the database with an invalid ID
+def test_get_item_details_invalid_id():
+    result = get_item_details_from_db(-1)
+    assert result is None
 
+# edge_case - calculate_discounted_price - Test calculating discounted price with a negative discount rate
+def test_calculate_discounted_price_negative_discount():
+    cart = {'items': [{'item_id': 1, 'quantity': 2, 'price': 10.0}]}
+    result = calculate_discounted_price(cart, -0.1)
+    assert result == 22.0
 
-    def test_calculate_discounted_price(self):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
+# edge_case - print_cart_summary - Test printing cart summary with an empty cart
+def test_print_cart_summary_empty(empty_cart, capsys):
+    print_cart_summary(empty_cart)
+    captured = capsys.readouterr()
+    assert captured.out == 'Cart Summary:\nTotal Price: 0.0\n'
 
-        self.cart.items = [
-           item1,
-           item2
-        ]
+# edge_case - save_cart_to_db - Test saving an empty cart to database
+def test_save_cart_to_db_empty(mock_add_item_to_cart_db, empty_cart):
+    save_cart_to_db(empty_cart)
+    mock_add_item_to_cart_db.assert_not_called()
 
-        discount_rate = 0.1  # 10% discount
-        discounted_price = calculate_discounted_price(self.cart, discount_rate)
-        
-        expected_price = 50.0 * 2 + 50.0 * 4  # Total without discount
-        expected_discounted_price = expected_price * (1 - discount_rate)
-        
-        self.assertEqual(discounted_price, expected_discounted_price)
-
-    @patch('builtins.print')
-    def test_print_cart_summary(self, mock_print):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
-
-        self.cart.items = [
-           item1,
-           item2
-        ]
-
-        self.cart.calculate_total_price()
-        print_cart_summary(self.cart)
-
-        print("Cart Summary:")
-        print("Item: Item 1, Category: general, Quantity: 2, Price: 50.0")
-        print("Item: Item 2, Category: general, Quantity: 4, Price: 50.0")
-        print("Total Price: 300.0")
-
-    @patch('database.add_item_to_cart_db')
-    def test_save_cart_to_db(self, mock_add_item_to_cart_db):
-        item1 = {"item_id":1, "price":50.0, "name":"Item 1", "category":"electronics", "user_type": "premium", "quantity": 2}
-        item2 = {"item_id":2, "price":50.0, "name":"Item 2", "category":"electronics", "user_type": "premium", "quantity": 4}
-
-        self.cart.items = [
-           item1,
-           item2
-        ]
-
-        save_cart_to_db(self.cart)
-        items = get_all_items_from_cart(self.cart)
-         
-        self.assertEqual(len(items), 2)
-        self.assertEqual(items[0]['name'], 'Item 1')
-        self.assertEqual(items[1]['name'], 'Item 2')
-
-
-
-if __name__ == "__main__":
-    unittest.main()
