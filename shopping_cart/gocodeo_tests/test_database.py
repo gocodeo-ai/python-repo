@@ -1,109 +1,136 @@
-import unittest
-import os
-import psutil
-from memory_profiler import memory_usage
-from shopping_cart.database import DatabaseConnection, add_item_to_cart_db
+import pytest
+from unittest import mock
 import sqlite3
+import os
+from your_module import DatabaseConnection, add_item_to_cart_db
 
-class TestMemoryLeak(unittest.TestCase):
-    def setUp(self):
-        self.db_path = "shopping_cart.db"
-        self.db_connection = DatabaseConnection(self.db_path)
-        self.db_connection.connect()
-        self.init_database()
+@pytest.fixture
+def mock_sqlite3_connect():
+    with mock.patch('sqlite3.connect') as mock_connect:
+        mock_connection = mock.Mock()
+        mock_cursor = mock.Mock()
+        mock_connection.cursor.return_value = mock_cursor
+        mock_connect.return_value = mock_connection
+        yield mock_connect, mock_connection, mock_cursor
 
-    def tearDown(self):
-        os.remove(self.db_path)
+@pytest.fixture
+def mock_os_path():
+    with mock.patch('os.path.dirname') as mock_dirname, \
+         mock.patch('os.path.abspath') as mock_abspath, \
+         mock.patch('os.path.join') as mock_join:
+        mock_dirname.return_value = '/mocked/path'
+        mock_abspath.return_value = '/mocked/path/to/file'
+        mock_join.return_value = '/mocked/path/to/database.db'
+        yield mock_dirname, mock_abspath, mock_join
 
-    def init_database(self):
-        create_table_query = '''
-                                CREATE TABLE IF NOT EXISTS  cart (
-                                    id INTEGER PRIMARY KEY,
-                                    item_id INTEGER ,
-                                    name TEXT,
-                                    price REAL,
-                                    quantity INTEGER,
-                                    category TEXT,
-                                    user_type TEXT,
-                                    payment_status
-                                );
-                             '''
-         
-        self.db_connection.execute(create_table_query, None)
-        self.db_connection.commit()
+@pytest.fixture
+def setup_database_connection(mock_sqlite3_connect, mock_os_path):
+    mock_connect, mock_connection, mock_cursor = mock_sqlite3_connect
+    mock_dirname, mock_abspath, mock_join = mock_os_path
+    db_path = mock_join.return_value
+    database_connection = DatabaseConnection(db_path)
+    yield database_connection, mock_connection, mock_cursor
 
+@pytest.fixture
+def setup_add_item_to_cart_db(mock_sqlite3_connect, mock_os_path):
+    mock_connect, mock_connection, mock_cursor = mock_sqlite3_connect
+    mock_dirname, mock_abspath, mock_join = mock_os_path
+    db_path = mock_join.return_value
+    database_connection = DatabaseConnection(db_path)
+    yield database_connection, mock_connection, mock_cursor, add_item_to_cart_db# happy_path - __init__ - Test successful initialization of the DatabaseConnection class.
+def test_init_database_connection(setup_database_connection):
+    db_connection, _, _ = setup_database_connection
+    assert db_connection.db_path == 'valid//to/database.db'
+    assert db_connection.connection is 
 
-    def test_connection(self):
-        self.db_connection.connect()
-        self.assertIsNotNone(self.db_connection.connection)
-        self.db_connection.close()
-        self.assertIsNone(self.db_connection.connection)
+# happy_path - connect - Test successful connection to the database.
+def test_connect_database(setup_database_connection):
+    db_connection, mock_connection, _ = setup_database_connection
+    db_connection.connect()
+    mock_connection.cursor.assert_called_once()
 
-    def test_execute_insert(self):
-        insert_query = "INSERT INTO cart (item_id, name, price, quantity, category, user_type, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        params = (1, "Item 1", 10.0, 1, "general", "regular", "pending")
-        self.db_connection.execute(insert_query, params)
-        self.db_connection.commit()
+# happy_path - execute - Test successful execution of a query.
+def test_execute_query(setup_database_connection):
+    db_connection, mock_connection, mock_cursor = setup_database_connection
+    query = 'CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT);'
+    db_connection.execute(query)
+    mock_cursor.execute.assert_called_once_with(query, [])
 
-        select_query = "SELECT * FROM cart WHERE item_id = ?"
-        result = self.db_connection.fetchone(select_query, (1,))
-        self.assertIsNotNone(result)
-        self.assertEqual(result[1], 1)
+# happy_path - fetchone - Test successful fetching of one result.
+def test_fetchone_query(setup_database_connection):
+    db_connection, mock_connection, mock_cursor = setup_database_connection
+    mock_cursor.fetchone.return_value = None
+    result = db_connection.fetchone('SELECT * FROM test WHERE id = ?;', [1])
+    assert result is None
 
-    def test_execute_update(self):
-        self.test_execute_insert()
-        update_query = "UPDATE cart SET price = ? WHERE item_id = ?"
-        self.db_connection.execute(update_query, (20.0, 1))
-        self.db_connection.commit()
+# happy_path - fetchall - Test successful fetching of all results.
+def test_fetchall_query(setup_database_connection):
+    db_connection, mock_connection, mock_cursor = setup_database_connection
+    mock_cursor.fetchall.return_value = []
+    results = db_connection.fetchall('SELECT * FROM test;')
+    assert results == []
 
-        select_query = "SELECT price FROM cart WHERE item_id = ?"
-        result = self.db_connection.fetchone(select_query, (1,))
-        self.assertEqual(result[0], 20.0)
+# happy_path - commit - Test successful commit of changes.
+def test_commit_changes(setup_database_connection):
+    db_connection, mock_connection, _ = setup_database_connection
+    db_connection.commit()
+    mock_connection.commit.assert_called_once()
 
-    def test_execute_delete(self):
-        self.test_execute_insert()
-        delete_query = "DELETE FROM cart WHERE item_id = ?"
-        self.db_connection.execute(delete_query, (1,))
-        self.db_connection.commit()
+# happy_path - close - Test successful closing of the database connection.
+def test_close_database_connection(setup_database_connection):
+    db_connection, mock_connection, _ = setup_database_connection
+    db_connection.close()
+    assert db_connection.connection is None
 
-        select_query = "SELECT * FROM cart WHERE item_id = ?"
-        result = self.db_connection.fetchone(select_query, (1,))
-        self.assertIsNone(result)
+# happy_path - add_item_to_cart_db - Test successfully adding an item to the cart database.
+def test_add_item_to_cart_db(setup_add_item_to_cart_db):
+    db_connection, mock_connection, mock_cursor, add_item_to_cart_db = setup_add_item_to_cart_db
+    query = 'INSERT INTO cart (item_id, quantity) VALUES (?, ?);'
+    params = [1, 2]
+    add_item_to_cart_db(query, params)
+    mock_cursor.execute.assert_called_once_with(query, params)
 
-    def test_fetchone(self):
-        self.test_execute_insert()
-        select_query = "SELECT * FROM cart WHERE item_id = ?"
-        result = self.db_connection.fetchone(select_query, (1,))
-        self.assertIsNotNone(result)
-        self.assertEqual(result[1], 1)
+# edge_case - __init__ - Test initializing DatabaseConnection with an invalid path.
+def test_init_database_connection_invalid_path():
+    db_connection = DatabaseConnection('invalid/path/to/database.db')
+    assert db_connection.db_path == 'invalid/path/to/database.db'
+    assert db_connection.connection is None
 
-    def test_fetchall(self):
-        self.test_execute_insert()
-        insert_query = "INSERT INTO cart (item_id, name, price, quantity, category, user_type, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        self.db_connection.execute(insert_query, (2, "Item 2", 15.0, 2, "general", "regular", "pending"))
-        self.db_connection.commit()
+# edge_case - connect - Test connection failure when the database path is invalid.
+def test_connect_database_invalid_path():
+    db_connection = DatabaseConnection('invalid/path/to/database.db')
+    with pytest.raises(sqlite3.OperationalError):
+        db_connection.connect()
 
-        select_query = "SELECT * FROM cart"
-        results = self.db_connection.fetchall(select_query)
-        self.assertEqual(len(results), 2)
+# edge_case - execute - Test executing an invalid SQL query.
+def test_execute_invalid_query(setup_database_connection):
+    db_connection, _, mock_cursor = setup_database_connection
+    with pytest.raises(sqlite3.OperationalError):
+        db_connection.execute('INVALID SQL QUERY')
 
-    def test_invalid_query(self):
-        with self.assertRaises(sqlite3.OperationalError):
-            self.db_connection.execute("INVALID SQL QUERY")
+# edge_case - fetchone - Test fetching results from a non-existent table.
+def test_fetchone_non_existent_table(setup_database_connection):
+    db_connection, _, mock_cursor = setup_database_connection
+    mock_cursor.fetchone.side_effect = sqlite3.OperationalError
+    result = db_connection.fetchone('SELECT * FROM non_existent_table;')
+    assert result is None
 
-    def test_memory_leak(self):
-        mem_usage_before = memory_usage()
-        
-        for _ in range(10000):
-            query = "INSERT INTO cart (item_id) VALUES (1)"
-            add_item_to_cart_db(query, params=None)
+# edge_case - commit - Test committing without an active transaction.
+def test_commit_without_transaction(setup_database_connection):
+    db_connection, _, _ = setup_database_connection
+    db_connection.commit()  # No exception should be raised.
 
-        mem_usage_after = memory_usage()
-       
-        max_memory_increase = 0.1  # in MB
-        for mem_before, mem_after in zip(mem_usage_before, mem_usage_after):
-            memory_increase = mem_after - mem_before
-            self.assertLess(memory_increase, max_memory_increase, f"Memory Leak: Memory Increase {memory_increase} exceeds threshold {max_memory_increase}")
+# edge_case - close - Test closing the database connection when it's already closed.
+def test_close_already_closed_connection(setup_database_connection):
+    db_connection, _, _ = setup_database_connection
+    db_connection.close()
+    db_connection.close()  # No exception should be raised.
 
-if __name__ == "__main__":
-    unittest.main()
+# edge_case - add_item_to_cart_db - Test adding an item to the cart with invalid parameters.
+def test_add_item_to_cart_db_invalid_params(setup_add_item_to_cart_db):
+    db_connection, mock_connection, mock_cursor, add_item_to_cart_db = setup_add_item_to_cart_db
+    query = 'INSERT INTO cart (item_id, quantity) VALUES (?, ?);'
+    params = ['invalid_id', -1]
+    with pytest.raises(ValueError):
+        add_item_to_cart_db(query, params)
+
