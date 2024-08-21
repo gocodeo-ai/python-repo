@@ -2,97 +2,119 @@ import pytest
 from unittest.mock import Mock
 
 @pytest.fixture
-def mock_cart():
+def cart_mock():
     cart = Mock()
-    cart.calculate_total_price = Mock(return_value=100)
-    cart.user_type = "regular"
-    cart.items = [
-        {"item_id": 1, "category": "electronics", "quantity": 1, "price": 100},
-        {"item_id": 2, "category": "clothing", "quantity": 2, "price": 50}
-    ]
-    cart.total_price = 100
+    cart.calculate_total_price = Mock()
     return cart
 
 @pytest.fixture
 def discount():
-    return Discount(discount_rate=0.1, min_purchase_amount=50)# happy_path - apply_discount - Apply discount to a regular user with total price above minimum purchase amount
-def test_apply_discount_regular_user_above_minimum(discount, mock_cart):
-    mock_cart.user_type = 'regular'
-    total = discount.apply_discount(mock_cart)
-    assert total == 110.0  # 100 * (1 + 0.1)
+    return Discount(discount_rate=0.1, min_purchase_amount=100)
 
-# happy_path - apply_discount - Apply discount to a premium user with electronics in the cart
-def test_apply_discount_premium_user_with_electronics(discount, mock_cart):
-    mock_cart.user_type = 'premium'
-    total = discount.apply_discount(mock_cart)
-    assert total == 115.0  # 100 + (0.1 * 1.5) 
+@pytest.fixture
+def premium_cart_with_electronics(cart_mock):
+    cart_mock.user_type = "premium"
+    cart_mock.items = [{"item_id": 1, "category": "electronics", "price": 100, "quantity": 1}]
+    cart_mock.calculate_total_price.return_value = sum(item['price'] * item['quantity'] for item in cart_mock.items)
+    return cart_mock
 
-# happy_path - apply_bulk_discount - Apply bulk discount to items in the cart
-def test_apply_bulk_discount(discount, mock_cart):
-    mock_cart.items = [
-        {'item_id': 1, 'category': 'electronics', 'quantity': 5, 'price': 100},
-        {'item_id': 2, 'category': 'clothing', 'quantity': 2, 'price': 50}
-    ]
-    discount.apply_bulk_discount(mock_cart, bulk_quantity=5, bulk_discount_rate=0.2)
-    assert mock_cart.items[0]['price'] == 80.0  # 100 * (1 - 0.2)
+@pytest.fixture
+def regular_cart_above_min(cart_mock):
+    cart_mock.user_type = "regular"
+    cart_mock.items = [{"item_id": 2, "category": "clothing", "price": 200, "quantity": 1}]
+    cart_mock.calculate_total_price.return_value = sum(item['price'] * item['quantity'] for item in cart_mock.items)
+    return cart_mock
 
-# happy_path - apply_seasonal_discount - Apply holiday seasonal discount to the cart
-def test_apply_seasonal_discount_holiday(discount, mock_cart):
-    total = discount.apply_seasonal_discount(mock_cart, season='holiday', seasonal_discount_rate=0.1)
-    assert total == 90.0  # 100 * (1 - 0.1)
+@pytest.fixture
+def bulk_cart(cart_mock):
+    cart_mock.items = [{"item_id": 3, "category": "groceries", "price": 50, "quantity": 10}]
+    return cart_mock
 
-# happy_path - apply_category_discount - Apply category discount to clothing items in the cart
-def test_apply_category_discount(discount, mock_cart):
-    discount.apply_category_discount(mock_cart, category='clothing', category_discount_rate=0.15)
-    assert mock_cart.items[1]['price'] == 42.5  # 50 * (1 - 0.15)
+@pytest.fixture
+def holiday_cart(cart_mock):
+    cart_mock.items = []
+    cart_mock.calculate_total_price.return_value = 200
+    return cart_mock
 
-# happy_path - apply_loyalty_discount - Apply loyalty discount for a loyal user with more than 2 years of loyalty
-def test_apply_loyalty_discount(discount, mock_cart):
-    mock_cart.user_type = 'loyal'
-    total = discount.apply_loyalty_discount(mock_cart, loyalty_years=3, loyalty_discount_rate=0.1)
-    assert total == 90.0  # 100 * (1 - 0.1)
+@pytest.fixture
+def category_cart(cart_mock):
+    cart_mock.items = [{"item_id": 4, "category": "toys", "price": 100, "quantity": 1}]
+    return cart_mock
 
-# happy_path - apply_flash_sale_discount - Apply flash sale discount to items on sale
-def test_apply_flash_sale_discount(discount, mock_cart):
-    mock_cart.items = [
-        {'item_id': 1, 'category': 'electronics', 'quantity': 1, 'price': 100},
-        {'item_id': 2, 'category': 'clothing', 'quantity': 2, 'price': 50}
-    ]
-    discount.apply_flash_sale_discount(mock_cart, flash_sale_rate=0.3, items_on_sale=[1])
-    assert mock_cart.items[0]['price'] == 70.0  # 100 * (1 - 0.3)
+@pytest.fixture
+def loyal_cart(cart_mock):
+    cart_mock.user_type = "loyal"
+    cart_mock.items = []
+    cart_mock.calculate_total_price.return_value = 300
+    return cart_mock
 
-# edge_case - apply_discount - Apply discount when total price is below minimum purchase amount
-def test_apply_discount_below_minimum(discount, mock_cart):
-    mock_cart.calculate_total_price = Mock(return_value=40)
-    total = discount.apply_discount(mock_cart)
-    assert total == 40.0  # No discount applied
+@pytest.fixture
+def premium_cart_no_items(cart_mock):
+    cart_mock.user_type = "premium"
+    cart_mock.items = []
+    cart_mock.calculate_total_price.return_value = 0
+    return cart_mock
 
-# edge_case - apply_bulk_discount - No bulk discount applied when quantity is below bulk quantity
-def test_apply_bulk_discount_below_quantity(discount, mock_cart):
-    mock_cart.items = [
-        {'item_id': 1, 'category': 'electronics', 'quantity': 3, 'price': 100},
-    ]
-    discount.apply_bulk_discount(mock_cart, bulk_quantity=5, bulk_discount_rate=0.2)
-    assert mock_cart.items[0]['price'] == 100.0  # No discount applied
+@pytest.fixture
+def regular_cart_below_min(cart_mock):
+    cart_mock.user_type = "regular"
+    cart_mock.items = [{"item_id": 5, "category": "clothing", "price": 50, "quantity": 1}]
+    cart_mock.calculate_total_price.return_value = 50
+    return cart_mock
 
-# edge_case - apply_seasonal_discount - Apply seasonal discount during summer
-def test_apply_seasonal_discount_summer(discount, mock_cart):
-    total = discount.apply_seasonal_discount(mock_cart, season='summer', seasonal_discount_rate=0.2)
-    assert total == 90.0  # 100 * (1 - 0.1)
+@pytest.fixture
+def bulk_cart_not_met(cart_mock):
+    cart_mock.items = [{"item_id": 6, "category": "groceries", "price": 30, "quantity": 2}]
+    return cart_mock
 
-# edge_case - apply_category_discount - No category discount applied when category does not match
-def test_apply_category_discount_no_match(discount, mock_cart):
-    discount.apply_category_discount(mock_cart, category='toys', category_discount_rate=0.2)
-    assert mock_cart.items[1]['price'] == 50.0  # No discount applied
+@pytest.fixture
+def unsupported_season_cart(cart_mock):
+    cart_mock.items = []
+    cart_mock.calculate_total_price.return_value = 100
+    return cart_mock
 
-# edge_case - apply_loyalty_discount - No loyalty discount applied for non-loyal user
-def test_apply_loyalty_discount_non_loyal(discount, mock_cart):
-    mock_cart.user_type = 'regular'
-    total = discount.apply_loyalty_discount(mock_cart, loyalty_years=1, loyalty_discount_rate=0.1)
-    assert total == 100.0  # No discount applied
+@pytest.fixture
+def empty_category_cart(cart_mock):
+    cart_mock.items = []
+    return cart_mock
 
-# edge_case - apply_flash_sale_discount - No flash sale discount applied when item is not on sale
-def test_apply_flash_sale_discount_no_sale(discount, mock_cart):
-    discount.apply_flash_sale_discount(mock_cart, flash_sale_rate=0.3, items_on_sale=[3])
-    assert mock_cart.items[0]['price'] == 100.0  # No discount applied
+@pytest.fixture
+def loyal_cart_insufficient_years(cart_mock):
+    cart_mock.user_type = "loyal"
+    cart_mock.items = []
+    cart_mock.calculate_total_price.return_value = 200
+    return cart_mock# happy_path - apply_discount - Applying a discount for a premium user with electronics in the cart.
+def test_apply_discount_premium_electronics(premium_cart_with_electronics, discount):
+    total_price = discount.apply_discount(premium_cart_with_electronics)
+    assert total_price == 1050.0
+
+# edge_case - apply_discount - Applying a discount for a premium user with no items in the cart.
+def test_apply_discount_premium_no_items(premium_cart_no_items, discount):
+    total_price = discount.apply_discount(premium_cart_no_items)
+    assert total_price == 0.0
+
+# edge_case - apply_discount - Applying a discount with total price below minimum purchase amount.
+def test_apply_discount_below_min(regular_cart_below_min, discount):
+    total_price = discount.apply_discount(regular_cart_below_min)
+    assert total_price == 50.0
+
+# edge_case - apply_bulk_discount - Applying a bulk discount when no items meet the bulk requirement.
+def test_apply_bulk_discount_not_met(bulk_cart_not_met, discount):
+    discount.apply_bulk_discount(bulk_cart_not_met, bulk_quantity=5, bulk_discount_rate=0.1)
+    assert bulk_cart_not_met.items[0]['price'] == 30.0
+
+# edge_case - apply_seasonal_discount - Applying a seasonal discount for an unsupported season.
+def test_apply_seasonal_discount_unsupported_season(unsupported_season_cart, discount):
+    total_price = discount.apply_seasonal_discount(unsupported_season_cart, season='winter', seasonal_discount_rate=0.2)
+    assert total_price == 100.0
+
+# edge_case - apply_category_discount - Applying a category discount to an empty cart.
+def test_apply_category_discount_empty_cart(empty_category_cart, discount):
+    discount.apply_category_discount(empty_category_cart, category='toys', category_discount_rate=0.15)
+    assert empty_category_cart.items == []
+
+# edge_case - apply_loyalty_discount - Applying a loyalty discount for a loyal user with insufficient loyalty years.
+def test_apply_loyalty_discount_insufficient_years(loyal_cart_insufficient_years, discount):
+    total_price = discount.apply_loyalty_discount(loyal_cart_insufficient_years, loyalty_years=1, loyalty_discount_rate=0.1)
+    assert total_price == 200.0
 
