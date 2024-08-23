@@ -1,0 +1,100 @@
+import pytest
+from unittest.mock import patch, MagicMock
+
+@pytest.fixture(autouse=True)
+def mock_dependencies():
+    with patch('shopping_cart.SomeDependency') as MockDependency:
+        mock_dependency_instance = MockDependency.return_value
+        mock_dependency_instance.some_method = MagicMock(return_value='mocked_value')
+        
+        with patch('shopping_cart.AnotherDependency') as MockAnotherDependency:
+            mock_another_dependency_instance = MockAnotherDependency.return_value
+            mock_another_dependency_instance.another_method = MagicMock(return_value='another_mocked_value')
+            
+            yield
+
+# happy_path - test_add_item_to_cart - Test adding an item to the shopping cart successfully.
+def test_add_item_to_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item = shopping_cart.Item('Apple', 1.5)
+    cart.add_item(item)
+    assert len(cart.items) == 1
+    assert cart.total == 1.5
+
+# happy_path - test_remove_item_from_cart - Test removing an item from the shopping cart successfully.
+def test_remove_item_from_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item = shopping_cart.Item('Apple', 1.5)
+    cart.add_item(item)
+    cart.remove_item(item)
+    assert len(cart.items) == 0
+    assert cart.total == 0.0
+
+# happy_path - test_apply_discount_to_cart - Test applying a discount to the shopping cart successfully.
+def test_apply_discount_to_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item = shopping_cart.Item('Apple', 1.5)
+    cart.add_item(item)
+    cart.apply_discount(0.1)
+    assert cart.total == 1.35
+
+# happy_path - test_checkout_cart - Test checking out the shopping cart successfully.
+def test_checkout_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item = shopping_cart.Item('Apple', 1.5)
+    cart.add_item(item)
+    receipt = cart.checkout()
+    assert receipt.total == 1.5
+    assert len(cart.items) == 0
+
+# happy_path - test_view_cart_items - Test viewing items in the shopping cart successfully.
+def test_view_cart_items(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item1 = shopping_cart.Item('Apple', 1.5)
+    item2 = shopping_cart.Item('Banana', 0.5)
+    cart.add_item(item1)
+    cart.add_item(item2)
+    items = cart.view_items()
+    assert len(items) == 2
+    assert items[0].name == 'Apple'
+    assert items[1].name == 'Banana'
+
+# edge_case - test_add_duplicate_item_to_cart - Test adding a duplicate item to the shopping cart.
+def test_add_duplicate_item_to_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item = shopping_cart.Item('Apple', 1.5)
+    cart.add_item(item)
+    cart.add_item(item)
+    assert len(cart.items) == 1
+    assert cart.total == 3.0
+
+# edge_case - test_remove_nonexistent_item_from_cart - Test removing a nonexistent item from the shopping cart.
+def test_remove_nonexistent_item_from_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item = shopping_cart.Item('Apple', 1.5)
+    cart.remove_item(item)
+    assert len(cart.items) == 0
+    assert cart.total == 0.0
+
+# edge_case - test_apply_invalid_discount_to_cart - Test applying an invalid discount to the shopping cart.
+def test_apply_invalid_discount_to_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    item = shopping_cart.Item('Apple', 1.5)
+    cart.add_item(item)
+    with pytest.raises(ValueError):
+        cart.apply_discount(1.5)
+
+# edge_case - test_checkout_empty_cart - Test checking out an empty shopping cart.
+def test_checkout_empty_cart(mock_dependencies):
+    cart = shopping_cart.Cart()
+    receipt = cart.checkout()
+    assert receipt.total == 0.0
+    assert len(cart.items) == 0
+
+# edge_case - test_add_item_with_invalid_price - Test adding an item with an invalid price to the shopping cart.
+def test_add_item_with_invalid_price(mock_dependencies):
+    cart = shopping_cart.Cart()
+    with pytest.raises(ValueError):
+        item = shopping_cart.Item('Apple', -1.5)
+        cart.add_item(item)
+
