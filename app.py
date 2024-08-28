@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from shopping_cart.cart import Cart
 from shopping_cart.discounts import Discount
-from demo.shopping_cart.payments import apply_promotions, Promotion  # Fixed import and added Promotion class
+from shopping_cart.payments import apply_promotions, Promotion  # Fixed import and added Promotion class
 from shopping_cart.utils import get_all_items_from_cart
 
 app = Flask(__name__)
@@ -16,9 +16,10 @@ def add_item():
     price = float(request.json['price'])
     name = request.json['name']
     category = request.json['category']
+    user_type = "regular"
 
     # Add item to cart
-    cart.add_item(item_id, quantity, price, name, category)
+    cart.add_item(item_id, quantity, price, name, category, user_type)
     return jsonify({'message': 'Item added to cart'}), 201
 
 @app.route('/remove_item', methods=['POST'])
@@ -67,9 +68,11 @@ def apply_promotions_to_cart():
     promotion1 = Promotion("Spring Sale", 0.10)
     promotion2 = Promotion("Black Friday", 0.25)
     promotions = [promotion1, promotion2]
-    
+
     apply_promotions(cart, promotions)
+
     return jsonify({'message': 'Promotions applied'})
+
 
 if __name__ == '__main__':
     app.run(debug=True)

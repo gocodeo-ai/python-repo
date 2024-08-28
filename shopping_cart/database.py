@@ -1,4 +1,5 @@
 import sqlite3
+import os
 
 class DatabaseConnection:
     def __init__(self, db_path):
@@ -40,7 +41,11 @@ class DatabaseConnection:
             self.connection.close()
             self.connection = None
 
-database_connection = DatabaseConnection("shopping_cart.db")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, "shopping_cart.db")
+database_connection = DatabaseConnection(db_path)
+
 
 def add_item_to_cart_db(query, params=None):
     
