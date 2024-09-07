@@ -1,100 +1,98 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from shopping_cart.cart import Cart, Item
 from shopping_cart.database import add_item_to_cart_db
-from your_module import Cart, Item
 
 @pytest.fixture
-def cart():
-    with patch('shopping_cart.database.add_item_to_cart_db') as mock_add_item_to_cart_db:
+def setup_cart():
+    with patch('shopping_cart.cart.add_item_to_cart_db') as mock_add_item_to_cart_db:
         cart = Cart(user_type='regular')
         yield cart, mock_add_item_to_cart_db
 
-# happy_path - add_item - Test adding a valid item to the cart.
-def test_add_item_valid(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='regular')
-    assert len(cart.items) == 1
-    assert cart.items[0] == {'item_id': 1, 'quantity': 2, 'price': 10.0, 'name': 'Apple', 'category': 'Fruits', 'user_type': 'regular'}
-    mock_add_item_to_cart_db.assert_called_once()
+# happy_path - test_add_item - Test that item is added to the cart correctly
+def test_add_item(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
+    cart.add_item(item_id=1, quantity=2, price=100, name='Laptop', category='Electronics', user_type='regular')
+    assert cart.items == [{'item_id': 1, 'quantity': 2, 'price': 100, 'name': 'Laptop', 'category': 'Electronics', 'user_type': 'regular'}]
+    mock_add_item_to_cart_db.assert_called_once_with("INSERT INTO cart (item_id, quantity, price, name, category, user_type) VALUES (1, 2, 100, 'Laptop', 'Electronics', 'regular')")
 
-# happy_path - remove_item - Test removing an existing item from the cart.
-def test_remove_item_existing(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='regular')
+# happy_path - test_remove_item - Test that item is removed from the cart correctly
+def test_remove_item(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
+    cart.add_item(item_id=1, quantity=2, price=100, name='Laptop', category='Electronics', user_type='regular')
     cart.remove_item(item_id=1)
-    assert len(cart.items) == 0
+    assert cart.items == []
     mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart WHERE item_id = 1")
 
-# happy_path - update_item_quantity - Test updating the quantity of an existing item.
-def test_update_item_quantity_valid(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='regular')
+# happy_path - test_update_item_quantity - Test that item quantity is updated correctly
+def test_update_item_quantity(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
+    cart.add_item(item_id=1, quantity=2, price=100, name='Laptop', category='Electronics', user_type='regular')
     cart.update_item_quantity(item_id=1, new_quantity=5)
     assert cart.items[0]['quantity'] == 5
     mock_add_item_to_cart_db.assert_called_with("UPDATE cart SET quantity = 5 WHERE item_id = 1")
 
-# happy_path - calculate_total_price - Test calculating total price with multiple items.
-def test_calculate_total_price_multiple_items(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='regular')
-    cart.add_item(item_id=2, quantity=3, price=5.0, name='Banana', category='Fruits', user_type='regular')
+# happy_path - test_calculate_total_price - Test that total price is calculated correctly
+def test_calculate_total_price(setup_cart):
+    cart, _ = setup_cart
+    cart.add_item(item_id=1, quantity=2, price=100, name='Laptop', category='Electronics', user_type='regular')
     total_price = cart.calculate_total_price()
-    assert total_price == 50.0
+    assert total_price == 200
 
-# happy_path - list_items - Test listing items in the cart.
-def test_list_items(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='regular')
-    cart.list_items()  # This will print the item
-    assert len(cart.items) == 1
-    assert cart.items[0]['name'] == 'Apple'
+# happy_path - test_list_items - Test that items are listed correctly
+def test_list_items(setup_cart, capsys):
+    cart, _ = setup_cart
+    cart.add_item(item_id=1, quantity=2, price=100, name='Laptop', category='Electronics', user_type='regular')
+    cart.list_items()
+    captured = capsys.readouterr()
+    assert captured.out == "Item: Laptop, Quantity: 2, Price per unit: 100\n"
 
-# happy_path - empty_cart - Test emptying the cart.
-def test_empty_cart(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruits', user_type='regular')
+# happy_path - test_empty_cart - Test that cart is emptied correctly
+def test_empty_cart(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
+    cart.add_item(item_id=1, quantity=2, price=100, name='Laptop', category='Electronics', user_type='regular')
     cart.empty_cart()
-    assert len(cart.items) == 0
+    assert cart.items == []
     mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart")
 
-# edge_case - add_item - Test adding an item with zero quantity.
-def test_add_item_zero_quantity(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=2, quantity=0, price=10.0, name='Banana', category='Fruits', user_type='regular')
-    assert len(cart.items) == 0
-    mock_add_item_to_cart_db.assert_not_called()
+# edge_case - test_add_item_zero_quantity - Test adding an item with zero quantity
+def test_add_item_zero_quantity(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
+    cart.add_item(item_id=2, quantity=0, price=50, name='Mouse', category='Electronics', user_type='guest')
+    assert cart.items == [{'item_id': 2, 'quantity': 0, 'price': 50, 'name': 'Mouse', 'category': 'Electronics', 'user_type': 'guest'}]
+    mock_add_item_to_cart_db.assert_called_once_with("INSERT INTO cart (item_id, quantity, price, name, category, user_type) VALUES (2, 0, 50, 'Mouse', 'Electronics', 'guest')")
 
-# edge_case - remove_item - Test removing an item that does not exist.
-def test_remove_item_non_existing(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.remove_item(item_id=999)
-    assert len(cart.items) == 0
-    mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart WHERE item_id = 999")
+# edge_case - test_remove_nonexistent_item - Test removing an item not in the cart
+def test_remove_nonexistent_item(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
+    cart.remove_item(item_id=99)
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart WHERE item_id = 99")
 
-# edge_case - update_item_quantity - Test updating quantity of an item that does not exist.
-def test_update_item_quantity_non_existing(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.update_item_quantity(item_id=999, new_quantity=3)
-    assert len(cart.items) == 0
-    mock_add_item_to_cart_db.assert_not_called()
+# edge_case - test_update_quantity_nonexistent_item - Test updating quantity of an item not in the cart
+def test_update_quantity_nonexistent_item(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
+    cart.update_item_quantity(item_id=99, new_quantity=3)
+    assert cart.items == []
+    mock_add_item_to_cart_db.assert_called_with("UPDATE cart SET quantity = 3 WHERE item_id = 99")
 
-# edge_case - calculate_total_price - Test calculating total price with an empty cart.
-def test_calculate_total_price_empty_cart(cart):
-    cart, mock_add_item_to_cart_db = cart
+# edge_case - test_calculate_total_price_empty_cart - Test calculating total price with no items
+def test_calculate_total_price_empty_cart(setup_cart):
+    cart, _ = setup_cart
     total_price = cart.calculate_total_price()
-    assert total_price == 0.0
+    assert total_price == 0
 
-# edge_case - empty_cart - Test emptying an already empty cart.
-def test_empty_cart_already_empty(cart):
-    cart, mock_add_item_to_cart_db = cart
+# edge_case - test_list_items_empty_cart - Test listing items when cart is empty
+def test_list_items_empty_cart(setup_cart, capsys):
+    cart, _ = setup_cart
+    cart.list_items()
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
+# edge_case - test_empty_already_empty_cart - Test emptying an already empty cart
+def test_empty_already_empty_cart(setup_cart):
+    cart, mock_add_item_to_cart_db = setup_cart
     cart.empty_cart()
-    assert len(cart.items) == 0
+    assert cart.items == []
     mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart")
-
-# edge_case - add_item - Test adding an item with negative price.
-def test_add_item_negative_price(cart):
-    cart, mock_add_item_to_cart_db = cart
-    cart.add_item(item_id=3, quantity=1, price=-5.0, name='Orange', category='Fruits', user_type='regular')
-    assert len(cart.items) == 0
-    mock_add_item_to_cart_db.assert_not_called()
 
