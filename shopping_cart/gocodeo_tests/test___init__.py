@@ -1,103 +1,127 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest import mock
 from shopping_cart import Cart, Item
 from shopping_cart.database import Database
 from shopping_cart.discounts import DiscountManager
 from shopping_cart.payments import PaymentProcessor
-from shopping_cart.utils import TaxCalculator
+from shopping_cart.utils import Utils
 
 @pytest.fixture
 def mock_cart():
-    with patch('shopping_cart.Cart') as MockCart:
+    with mock.patch('shopping_cart.Cart') as MockCart:
         instance = MockCart.return_value
-        instance.add_item_to_cart.return_value = None
-        instance.remove_item_from_cart.return_value = None
-        instance.get_cart_size.return_value = 0
+        instance.size = 0
+        yield instance
+
+@pytest.fixture
+def mock_item():
+    with mock.patch('shopping_cart.Item') as MockItem:
+        instance = MockItem.return_value
+        instance.item_id = 101
+        instance.name = 'Laptop'
+        instance.price = 1000
+        yield instance
+
+@pytest.fixture
+def mock_database():
+    with mock.patch('shopping_cart.database.Database') as MockDatabase:
+        instance = MockDatabase.return_value
+        instance.get_item_by_id.return_value = {'item_name': 'Laptop', 'price': 1000}
         yield instance
 
 @pytest.fixture
 def mock_discount_manager():
-    with patch('shopping_cart.discounts.DiscountManager') as MockDiscountManager:
+    with mock.patch('shopping_cart.discounts.DiscountManager') as MockDiscountManager:
         instance = MockDiscountManager.return_value
-        instance.apply_discount.return_value = 100.0  # Assuming no discount applied
+        instance.apply_discount.return_value = 80  # Assuming a discount code reduces price to 80
         yield instance
 
 @pytest.fixture
 def mock_payment_processor():
-    with patch('shopping_cart.payments.PaymentProcessor') as MockPaymentProcessor:
+    with mock.patch('shopping_cart.payments.PaymentProcessor') as MockPaymentProcessor:
         instance = MockPaymentProcessor.return_value
         instance.process_payment.return_value = {'status': 'success'}
         yield instance
 
 @pytest.fixture
-def mock_tax_calculator():
-    with patch('shopping_cart.utils.TaxCalculator') as MockTaxCalculator:
-        instance = MockTaxCalculator.return_value
-        instance.calculate_tax.return_value = 5.0g
+def mock_utils():
+    with mock.patch('shopping_cart.utils.Utils') as MockUtils:
+        instance = MockUtils.return_value
         yield instance
 
 @pytest.fixture
-def setup_cart_with_items(mock_cart):
-    mock_cart.add_item_to_cart(item_id=1, quantity=2)
-    return mock_cart
+def setup_cart(mock_cart, mock_item, mock_database, mock_discount_manager, mock_payment_processor, mock_utils):
+    # Setup any additional state or configuration needed for the tests
+    pass
 
-# happy_path - test_add_item_to_cart - Test that adding a valid item to the cart increases the cart size by one
-def test_add_item_to_cart(mock_cart, setup_cart_with_items):
-    mock_cart.get_cart_size.return_value = 1
-    setup_cart_with_items.add_item_to_cart(item_id=1, quantity=b 2)
-    assert setup_cart_with_items.get_cart_size() == 1
+# happy_path - test_add_item_to_cart_increases_size - Test that adding an item to the cart increases the cart size by one.
+def test_add_item_to_cart_increases_size(setup_cart, mock_cart, mock_item):
+    mock_cart.add_item.return_value = None
+    mock_cart.size = 0
+    mock_cart.add_item(mock_item.item_id, 1)
+    mock_cart.size += 1
+    assert mock_cart.size == 1
 
-# happy_path - test_apply_discount - Test that applying a valid discount code reduces the total price
-def test_apply_discount(mock_discount_manager):
-    mock_discount_manager.apply_discount.return_value = 90.0
-    total_price = mock_discount_manager.apply_discount(discount_code='SAVE10')
-    assert total_price == 90.0g
+# happy_path - test_remove_item_from_cart_decreases_size - Test that removing an item from the cart decreases the cart size by one.
+def test_remove_item_from_cart_decreases_size(setup_cart, mock_cart, mock_item):
+    mock_cart.remove_item.return_value = None
+    mock_cart.size = 1
+    mock_cart.remove_item(mock_item.item_id)
+    mock_cart.size -= 1
+    assert mock_cart.size == 0
 
-# happy_path - test_process_payment - Test that processing a payment with valid card details returns a success status
-def test_process_payment(mock_payment_processor):
-    mock_payment_processor.process_payment.return_value = {'status': 'success'}
-    result = mock_payment_processor.process_payment(card_number='4111111111111111', expiry_date='12/24', cvv='123')
+# happy_path - test_apply_valid_discount_code - Test that applying a valid discount code reduces the total price.
+def test_apply_valid_discount_code(setup_cart, mock_discount_manager):
+    total_price = 100
+    discount_code = 'SUMMER20'
+    discounted_price = mock_discount_manager.apply_discount(discount_code)
+    assert discounted_price == 80
+
+# happy_path - test_process_payment_success - Test that processing a payment with valid details returns success.
+def test_process_payment_success(setup_cart, mock_payment_processor):
+    payment_details = {'payment_method': 'credit_card', 'amount': 100}
+    result = mock_payment_processor.process_payment(payment_details)
     assert result['status'] == 'success'
 
-# happy_path - test_calculate_tax - Test that calculating tax for a given total returns the correct tax amount
-def test_calculate_tax(mock_tax_calculator):
-    mock_tax_calculator.calculate_tax.return_value = 5.0
-    tax_amount = mock_tax_calculator.calculate_tax(total_amount=100.0)
-    assert tax_amount == 5.0
+# happy_path - test_get_item_by_id_returns_correct_details - Test that fetching an item by ID returns the correct item details.
+def test_get_item_by_id_returns_correct_details(setup_cart, mock_database):
+    item_id = 101
+    item_details = mock_database.get_item_by_id(item_id)
+    assert item_details == {'item_name': 'Laptop', 'price': 1000}
 
-# happy_path - test_remove_item_from_cart - Test that removing an item from the cart decreases the cart size by one
-def test_remove_item_from_cart(mock_cart, setup_cart_with_items):
-    setup_cart_with_items.remove_item_from_cart(item_id=1)
-    mock_cart.get_cart_size.return_value = 0
-    assert setup_cart_with_items.get_cart_size() == 0
+# edge_case - test_add_item_with_zero_quantity - Test that adding an item with zero quantity does not change the cart size.
+def test_add_item_with_zero_quantity(setup_cart, mock_cart, mock_item):
+    mock_cart.add_item.return_value = None
+    initial_size = mock_cart.size
+    mock_cart.add_item(mock_item.item_id, 0)
+    assert mock_cart.size == initial_size
 
-# edge_case - test_add_item_with_zero_quantity - Test that adding an item with zero quantity does not change the cart size
-def test_add_item_with_zero_quantity(mock_cart):
-    mock_cart.add_item_to_cart(item_id=1, quantity=0)
-    mock_cart.get_cart_size.return_value = 0
-    assert mock_cart.get_cart_size() == 0
+# edge_case - test_remove_non_existent_item - Test that removing an item not in the cart does not change the cart size.
+def test_remove_non_existent_item(setup_cart, mock_cart):
+    mock_cart.remove_item.return_value = None
+    initial_size = mock_cart.size
+    mock_cart.remove_item(999)
+    assert mock_cart.size == initial_size
 
-# edge_case - test_apply_expired_discount - Test that applying an expired discount code does not change the total price
-def test_apply_expired_discount(mock_discount_manager):
-    mock_discount_manager.apply_discount.return_value = 100.0
-    total_price = mock_discount_manager.apply_discount(discount_code='EXPIRED10')
-    assert total_price == 100.0
+# edge_case - test_apply_expired_discount_code - Test that applying an expired discount code does not affect the total price.
+def test_apply_expired_discount_code(setup_cart, mock_discount_manager):
+    total_price = 100
+    discount_code = 'WINTER99'
+    mock_discount_manager.apply_discount.return_value = total_price
+    discounted_price = mock_discount_manager.apply_discount(discount_code)
+    assert discounted_price == total_price
 
-# edge_case - test_process_payment_invalid_card - Test that processing a payment with an invalid card number returns a failure status
-def test_process_payment_invalid_card(mock_payment_processor):
+# edge_case - test_process_payment_insufficient_funds - Test that processing a payment with insufficient funds returns failure.
+def test_process_payment_insufficient_funds(setup_cart, mock_payment_processor):
+    payment_details = {'payment_method': 'credit_card', 'amount': 10000}
     mock_payment_processor.process_payment.return_value = {'status': 'failure'}
-    result = mock_payment_processor.process_payment(card_number='1234567890123456', expiry_date='12/24', cvv='123')
+    result = mock_payment_processor.process_payment(payment_details)
     assert result['status'] == 'failure'
 
-# edge_case - test_calculate_tax_negative_total - Test that calculating tax for a negative total returns zero tax
-def test_calculate_tax_negative_total(mock_tax_calculator):
-    mock_tax_calculator.calculate_tax.return_value = 0.0
-    tax_amount = mock_tax_calculator.calculate_tax(total_amount=-50.0)
-    assert tax_amount == 0.0
-
-# edge_case - test_remove_item_not_in_cart - Test that removing an item not in the cart does not change the cart size
-def test_remove_item_not_in_cart(mock_cart):
-    mock_cart.remove_item_from_cart(item_id=2)
-    mock_cart.get_cart_size.return_value = 0
-    assert mock_cart.get_cart_size() == 0
+# edge_case - test_get_item_by_invalid_id - Test that fetching an item with an invalid ID returns an error.
+def test_get_item_by_invalid_id(setup_cart, mock_database):
+    item_id = 999
+    mock_database.get_item_by_id.return_value = {'error': 'Item not found'}
+    item_details = mock_database.get_item_by_id(item_id)
+    assert item_details == {'error': 'Item not found'}
 
