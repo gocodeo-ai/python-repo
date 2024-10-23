@@ -1,119 +1,116 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest import mock
 from shopping_cart.cart import Item, Cart
 from shopping_cart.database import add_item_to_cart_db
 
 @pytest.fixture
-def cart_fixture():
-    with patch('shopping_cart.database.add_item_to_cart_db') as mock_add_item_to_cart_db:
-        mock_add_item_to_cart_db.return_value = None
-        cart = Cart(user_type='regular')
-        yield cart, mock_add_item_to_cart_db
+def cart():
+    with mock.patch('shopping_cart.database.add_item_to_cart_db') as mock_db:
+        cart_instance = Cart(user_type='Regular')
+        yield cart_instance, mock_db
 
 @pytest.fixture
-def item_fixture():
-    item = Item(item_id=1, price=10.0, name='Apple', category='Fruit')
-    return item
+def item():
+    return Item(item_id=1, price=10.0, name='Apple', category='Fruit')
 
-# happy path - add_item - Test that add_item adds an item with correct details to the cart and database.
-def test_add_item_happy_path(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    assert cart.items == [{'item_id': 1, 'quantity': 2, 'price': 10.0, 'name': 'Apple', 'category': 'Fruit', 'user_type': 'regular'}]
-    mock_add_item_to_cart_db.assert_called_once_with("INSERT INTO cart (item_id, quantity, price, name, category, user_type) VALUES (1, 2, 10.0, 'Apple', 'Fruit', 'regular')")
-
-
-# happy path - remove_item - Test that remove_item removes the correct item from the cart and database.
-def test_remove_item_happy_path(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    cart.remove_item(item_id=1)
-    assert cart.items == []
-    mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart WHERE item_id = 1")
+# happy path - add_item - Test that adding an item to the cart updates the items list and calls the database function.
+def test_add_item_updates_cart(cart, item):
+    cart_instance, mock_db = cart
+    cart_instance.add_item(item.item_id, 2, item.price, item.name, item.category, cart_instance.user_type)
+    assert cart_instance.items == [{'item_id': 1, 'quantity': 2, 'price': 10.0, 'name': 'Apple', 'category': 'Fruit', 'user_type': 'Regular'}]
+    mock_db.assert_called_once_with("INSERT INTO cart (item_id, quantity, price, name, category, user_type) VALUES (1, 2, 10.0, 'Apple', 'Fruit', 'Regular')")
 
 
-# happy path - update_item_quantity - Test that update_item_quantity updates the quantity of an item in the cart and database.
-def test_update_item_quantity_happy_path(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    cart.update_item_quantity(item_id=1, new_quantity=5)
-    assert cart.items == [{'item_id': 1, 'quantity': 5, 'price': 10.0, 'name': 'Apple', 'category': 'Fruit', 'user_type': 'regular'}]
-    mock_add_item_to_cart_db.assert_called_with("UPDATE cart SET quantity = 5 WHERE item_id = 1")
+# happy path - remove_item - Test that removing an item from the cart updates the items list and calls the database function.
+def test_remove_item_updates_cart(cart, item):
+    cart_instance, mock_db = cart
+    cart_instance.add_item(item.item_id, 2, item.price, item.name, item.category, cart_instance.user_type)
+    cart_instance.remove_item(item.item_id)
+    assert cart_instance.items == []
+    mock_db.assert_called_with('DELETE FROM cart WHERE item_id = 1')
 
 
-# happy path - calculate_total_price - Test that calculate_total_price calculates the total price correctly for multiple items.
-def test_calculate_total_price_happy_path(cart_fixture):
-    cart, _ = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    cart.add_item(item_id=2, quantity=3, price=5.0, name='Banana', category='Fruit', user_type='regular')
-    total_price = cart.calculate_total_price()
-    assert total_price == 35.0
+# happy path - update_item_quantity - Test that updating item quantity in the cart modifies the item and calls the database function.
+def test_update_item_quantity(cart, item):
+    cart_instance, mock_db = cart
+    cart_instance.add_item(item.item_id, 2, item.price, item.name, item.category, cart_instance.user_type)
+    cart_instance.update_item_quantity(item.item_id, 5)
+    assert cart_instance.items == [{'item_id': 1, 'quantity': 5, 'price': 10.0, 'name': 'Apple', 'category': 'Fruit', 'user_type': 'Regular'}]
+    mock_db.assert_called_with('UPDATE cart SET quantity = 5 WHERE item_id = 1')
 
 
-# happy path - list_items - Test that list_items prints all items in the cart with correct details.
-def test_list_items_happy_path(cart_fixture, capsys):
-    cart, _ = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    cart.list_items()
+# happy path - calculate_total_price - Test that calculating total price returns the correct total and updates the cart's total price.
+def test_calculate_total_price(cart, item):
+    cart_instance, mock_db = cart
+    cart_instance.add_item(item.item_id, 2, item.price, item.name, item.category, cart_instance.user_type)
+    total_price = cart_instance.calculate_total_price()
+    assert total_price == 20.0
+    assert cart_instance.total_price == 20.0
+
+
+# happy path - list_items - Test that listing items prints the correct item details.
+def test_list_items(cart, item, capsys):
+    cart_instance, mock_db = cart
+    cart_instance.add_item(item.item_id, 2, item.price, item.name, item.category, cart_instance.user_type)
+    cart_instance.list_items()
     captured = capsys.readouterr()
-    assert captured.out.strip() == "Item: Apple, Quantity: 2, Price per unit: 10.0"
+    assert captured.out == 'Item: Apple, Quantity: 2, Price per unit: 10.0\n'
 
 
-# happy path - empty_cart - Test that empty_cart removes all items from the cart and database.
-def test_empty_cart_happy_path(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    cart.empty_cart()
-    assert cart.items == []
-    mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart")
+# happy path - empty_cart - Test that emptying the cart clears the items list and calls the database function.
+def test_empty_cart(cart, item):
+    cart_instance, mock_db = cart
+    cart_instance.add_item(item.item_id, 2, item.price, item.name, item.category, cart_instance.user_type)
+    cart_instance.empty_cart()
+    assert cart_instance.items == []
+    mock_db.assert_called_with('DELETE FROM cart')
 
 
-# edge case - add_item - Test that add_item handles adding an item with zero quantity gracefully.
-def test_add_item_zero_quantity(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.add_item(item_id=2, quantity=0, price=15.0, name='Banana', category='Fruit', user_type='regular')
-    assert cart.items == [{'item_id': 2, 'quantity': 0, 'price': 15.0, 'name': 'Banana', 'category': 'Fruit', 'user_type': 'regular'}]
-    mock_add_item_to_cart_db.assert_called_once_with("INSERT INTO cart (item_id, quantity, price, name, category, user_type) VALUES (2, 0, 15.0, 'Banana', 'Fruit', 'regular')")
+# edge case - add_item - Test that adding an item with zero quantity does not add to the cart.
+def test_add_item_zero_quantity(cart):
+    cart_instance, mock_db = cart
+    cart_instance.add_item(2, 0, 5.0, 'Banana', 'Fruit', 'Regular')
+    assert cart_instance.items == []
+    mock_db.assert_not_called()
 
 
-# edge case - remove_item - Test that remove_item does not fail when removing an item not in the cart.
-def test_remove_item_not_in_cart(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    cart.remove_item(item_id=99)
-    assert cart.items == [{'item_id': 1, 'quantity': 2, 'price': 10.0, 'name': 'Apple', 'category': 'Fruit', 'user_type': 'regular'}]
-    mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart WHERE item_id = 99")
+# edge case - remove_item - Test that removing an item not in the cart does not alter the cart.
+def test_remove_nonexistent_item(cart):
+    cart_instance, mock_db = cart
+    cart_instance.remove_item(99)
+    assert cart_instance.items == []
+    mock_db.assert_called_with('DELETE FROM cart WHERE item_id = 99')
 
 
-# edge case - update_item_quantity - Test that update_item_quantity handles updating quantity to zero correctly.
-def test_update_item_quantity_to_zero(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.add_item(item_id=1, quantity=2, price=10.0, name='Apple', category='Fruit', user_type='regular')
-    cart.update_item_quantity(item_id=1, new_quantity=0)
-    assert cart.items == [{'item_id': 1, 'quantity': 0, 'price': 10.0, 'name': 'Apple', 'category': 'Fruit', 'user_type': 'regular'}]
-    mock_add_item_to_cart_db.assert_called_with("UPDATE cart SET quantity = 0 WHERE item_id = 1")
+# edge case - update_item_quantity - Test that updating the quantity of an item not in the cart does not alter the cart.
+def test_update_nonexistent_item_quantity(cart):
+    cart_instance, mock_db = cart
+    cart_instance.update_item_quantity(99, 1)
+    assert cart_instance.items == []
+    mock_db.assert_called_with('UPDATE cart SET quantity = 1 WHERE item_id = 99')
 
 
-# edge case - calculate_total_price - Test that calculate_total_price returns zero for an empty cart.
-def test_calculate_total_price_empty_cart(cart_fixture):
-    cart, _ = cart_fixture
-    total_price = cart.calculate_total_price()
-    assert total_price == 0.0
+# edge case - calculate_total_price - Test that calculating total price on an empty cart returns zero.
+def test_calculate_total_price_empty_cart(cart):
+    cart_instance, mock_db = cart
+    total_price = cart_instance.calculate_total_price()
+    assert total_price == 0
+    assert cart_instance.total_price == 0
 
 
-# edge case - list_items - Test that list_items handles an empty cart without errors.
-def test_list_items_empty_cart(cart_fixture, capsys):
-    cart, _ = cart_fixture
-    cart.list_items()
+# edge case - list_items - Test that listing items on an empty cart does not print any items.
+def test_list_items_empty_cart(cart, capsys):
+    cart_instance, mock_db = cart
+    cart_instance.list_items()
     captured = capsys.readouterr()
-    assert captured.out.strip() == ""
+    assert captured.out == ''
 
 
-# edge case - empty_cart - Test that empty_cart does not fail when the cart is already empty.
-def test_empty_cart_already_empty(cart_fixture):
-    cart, mock_add_item_to_cart_db = cart_fixture
-    cart.empty_cart()
-    assert cart.items == []
-    mock_add_item_to_cart_db.assert_called_with("DELETE FROM cart")
+# edge case - empty_cart - Test that emptying an already empty cart does not cause errors.
+def test_empty_already_empty_cart(cart):
+    cart_instance, mock_db = cart
+    cart_instance.empty_cart()
+    assert cart_instance.items == []
+    mock_db.assert_called_with('DELETE FROM cart')
 
 
